@@ -1,0 +1,50 @@
+[
+  {
+    "deviceID": "DEV001",
+    "deviceType": "sensor",
+    "timestamp": 1640995200000,
+    "location": {
+      "country": "USA",
+      "city": "New York",
+      "area": "Manhattan",
+      "factory": "Factory A",
+      "section": "Section 1"
+    },
+    "data": {
+      "temperature": 25.5,
+      "status": "healthy"
+    }
+  },
+  {
+    "deviceID": "DEV002",
+    "deviceType": "controller",
+    "timestamp": 1640995260000,
+    "location": {
+      "country": "USA",
+      "city": "Los Angeles",
+      "area": "Downtown",
+      "factory": "Factory B",
+      "section": "Section 2"
+    },
+    "data": {
+      "temperature": 28.2,
+      "status": "healthy"
+    }
+  },
+  {
+    "deviceID": "DEV003",
+    "deviceType": "sensor",
+    "timestamp": 1640995320000,
+    "location": {
+      "country": "USA",
+      "city": "Chicago",
+      "area": "Loop",
+      "factory": "Factory C",
+      "section": "Section 3"
+    },
+    "data": {
+      "temperature": 22.1,
+      "status": "unhealthy"
+    }
+  }
+]
