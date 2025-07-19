@@ -190,6 +190,6 @@ If you encounter any issues or have questions:
 
 ---
 
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by Ayushman Trivedi**
 
 *Revolutionizing neural networks through evolution! 🧬🧠*
