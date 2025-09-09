@@ -163,6 +163,12 @@ PRINT_INTERVAL = 5
 THOUGHT_INTERVAL = 10
 MIN_MUT_STRENGTH = 0.01
 
+# Local refinement hyperparameters
+LOCAL_GD_ENABLED = True
+LOCAL_GD_LR = 0.05
+LOCAL_LINESEARCH_ALPHAS = [0.0, 0.05, 0.1, 0.2, 0.3, 0.5]
+LOCAL_MIN_IMPROVEMENT = 1e-8
+
 # Multi-class Neural Network Classes
 @njit
 def population_forward(x, weights, biases):
@@ -217,7 +223,7 @@ class EvoNeuron:
     def _activate(self, x):
         return x
 
-    def evolve(self, x, y_true, error_fn, mutation_strength, V_m=None):
+    def evolve(self, x, y_true, error_fn, mutation_strength, V_m=None, tau=None):
         self._check_population_shapes()
         errors = []
         for ind in self.population:
@@ -228,6 +234,65 @@ class EvoNeuron:
         survivors = [self.population[i] for i in idx_sorted[:2]]
         if self.elite is not None:
             survivors.append({'weights': self.elite['weights'].copy(), 'bias': self.elite['bias']})
+        # Local GD micro-step aligned with mean V_m direction on best survivor
+        if LOCAL_GD_ENABLED and len(survivors) > 0:
+            best = survivors[0]
+            w = best['weights']
+            b = best['bias']
+            out = self._activate(np.dot(x, w) + b)
+            err_current = error_fn(out, y_true)
+            trigger = (tau is None) or (err_current >= tau)
+            if trigger:
+                d_hat_w = None
+                d_hat_b = None
+                if V_m and len(V_m) > 0:
+                    vm_filtered = [v for v in V_m if isinstance(v.get('weights', None), np.ndarray) and v['weights'].shape == w.shape]
+                    if len(vm_filtered) > 0:
+                        w_bar = np.mean([v['weights'] for v in vm_filtered], axis=0)
+                        b_bar = float(np.mean([v['bias'] for v in vm_filtered]))
+                        d_w = (w_bar - w).astype(np.float32)
+                        d_b = np.float32(b_bar - b)
+                        denom = np.sqrt(np.dot(d_w, d_w) + float(d_b) * float(d_b)) + 1e-12
+                        d_hat_w = d_w / denom
+                        d_hat_b = d_b / denom
+                if isinstance(y_true, np.ndarray):
+                    y_bar = float(np.mean(y_true))
+                else:
+                    y_bar = float(y_true)
+                grad_signal = 2.0 * (float(out) - y_bar)
+                s_w = (-LOCAL_GD_LR * grad_signal) * x.astype(np.float32)
+                s_b = np.float32(-LOCAL_GD_LR * grad_signal)
+                if d_hat_w is not None:
+                    dot_sb = float(np.dot(s_w, d_hat_w) + float(s_b) * float(d_hat_b))
+                    if dot_sb < 0.0:
+                        s_w = s_w - dot_sb * d_hat_w
+                        s_b = np.float32(float(s_b) - dot_sb * float(d_hat_b))
+                w_prop = (w + s_w).astype(np.float32)
+                b_prop = np.float32(b + s_b)
+                out_prop = self._activate(np.dot(x, w_prop) + b_prop)
+                err_prop = error_fn(out_prop, y_true)
+                improved = (err_current - err_prop) > LOCAL_MIN_IMPROVEMENT
+                if (not improved) and (d_hat_w is not None):
+                    best_alpha = 0.0
+                    best_err = err_current
+                    for alpha in LOCAL_LINESEARCH_ALPHAS:
+                        if alpha <= 0.0:
+                            continue
+                        w_ls = (w + alpha * d_hat_w).astype(np.float32)
+                        b_ls = np.float32(b + alpha * float(d_hat_b))
+                        out_ls = self._activate(np.dot(x, w_ls) + b_ls)
+                        err_ls = error_fn(out_ls, y_true)
+                        if err_ls + 1e-12 < best_err:
+                            best_err = err_ls
+                            best_alpha = alpha
+                    if best_alpha > 0.0:
+                        w_prop = (w + best_alpha * d_hat_w).astype(np.float32)
+                        b_prop = np.float32(b + best_alpha * float(d_hat_b))
+                        err_prop = best_err
+                        improved = True
+                if improved:
+                    best['weights'] = w_prop
+                    best['bias'] = b_prop
         new_pop = survivors.copy()
         while len(new_pop) < self.pop_size:
             parent = random.choice(survivors)
@@ -342,7 +407,7 @@ class MultiClassEvoNet:
             for i, neuron in enumerate(self.level3):
                 inp = l3_inputs[i]
                 inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
-                neuron.evolve(np.full(LEVEL2_NEURONS, inp_val), y_true[i], mse_loss, mut_strength, self.V_m.get())
+                neuron.evolve(np.full(LEVEL2_NEURONS, inp_val), y_true[i], mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
         return y_pred, l1_errors, l2_errors, l3_outputs
 
     def train(self, X, y, y_oh, epochs=EPOCHS, X_val=None, y_val=None, y_val_oh=None):
@@ -480,7 +545,7 @@ class RegressionEvoNet:
         
         # KEPT THE SAME: Evolution for output neuron
         if train:
-            self.output_neuron.evolve(np.full(LEVEL2_NEURONS, l3_input), y_true, mse_loss, mut_strength, self.V_m.get())
+            self.output_neuron.evolve(np.full(LEVEL2_NEURONS, l3_input), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
         
         return y_pred, l1_errors, l2_errors
 
