@@ -900,7 +900,7 @@ def load_housing_dataset(custom_path=None):
         # Apply centralized preprocessing (no SMOTE for regression)
         X, y, feature_names = preprocess_dataset(X, y, "Custom Housing")
         
-        return X, y
+        return X, y, feature_names
     else:
         housing = fetch_california_housing()
         X = housing.data
@@ -916,7 +916,7 @@ def load_housing_dataset(custom_path=None):
         # Apply centralized preprocessing (no SMOTE for regression)
         X, y, feature_names = preprocess_dataset(X, y, "California Housing")
         
-        return X, y
+        return X, y, feature_names
 
 def load_cancer_dataset():
     """Load and preprocess the Breast Cancer Dataset (sklearn)"""
@@ -1647,11 +1647,9 @@ if __name__ == "__main__":
                     print(f"Error: File not found at {custom_path}")
                     print("Please check the path and try again.")
                     sys.exit(1)
-                X, y = load_housing_dataset(custom_path)
-                feature_names = [f"Feature_{i}" for i in range(X.shape[1])]
+                X, y, feature_names = load_housing_dataset(custom_path)
             else:
-                X, y = load_housing_dataset()
-                feature_names = ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup', 'Latitude', 'Longitude']
+                X, y, feature_names = load_housing_dataset()
         
         elif choice == "2":
             # Breast Cancer Dataset
@@ -2022,19 +2020,10 @@ if __name__ == "__main__":
         else:
             print("\n[Regression Layer] Activating evolutionary neural network for regression...")
             
-            # Feature selection for regression
-            from sklearn.feature_selection import SelectKBest, f_regression
-            k = min(8, X.shape[1])
-            selector = SelectKBest(score_func=f_regression, k=k)
-            X_selected = selector.fit_transform(X, y.ravel())
-            selected_indices = selector.get_support(indices=True)
-            selected_names = [feature_names[i] for i in selected_indices]
-            print(f"Selected top {k} features for regression: {selected_names}")
-            
-            # Split data
+            # Split data (skip KBest since features are already engineered/scaled)
             from sklearn.model_selection import train_test_split
             X_train, X_test, y_train, y_test = train_test_split(
-                X_selected, y, test_size=0.2, random_state=42
+                X, y, test_size=0.2, random_state=42
             )
             
             # Further split for validation
