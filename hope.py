@@ -393,21 +393,28 @@ class MultiClassEvoNet:
         l2_errors = np.array(l2_errors)
         l3_inputs = l2_marks
         assert len(l3_inputs) == LEVEL2_NEURONS
+        # Build full L2 feature vector for L3
+        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l3_inputs], dtype=np.float32)
         l3_outputs = []
-        for i, (neuron, inp) in enumerate(zip(self.level3, l3_inputs)):
-            if isinstance(inp, tuple) and inp[0] == '*':
-                inp_val = inp[1]
-            else:
-                inp_val = inp
-            out, _ = neuron.forward(np.full(LEVEL2_NEURONS, inp_val), y_true[i], mse_loss, mut_strength, self.V_m.get())
+        for i, neuron in enumerate(self.level3):
+            out, _ = neuron.forward(l2_feature_vec, y_true[i], mse_loss, mut_strength, self.V_m.get())
             l3_outputs.append(out)
         l3_outputs = np.array(l3_outputs)
         y_pred = softmax(l3_outputs)
         if train:
-            for i, neuron in enumerate(self.level3):
-                inp = l3_inputs[i]
+            # Evolve L1 neurons with tau1
+            for neuron in self.level1:
+                neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1)
+            # Evolve L2 neurons with tau2
+            for neuron, inp in zip(self.level2, l2_inputs):
                 inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
-                neuron.evolve(np.full(LEVEL2_NEURONS, inp_val), y_true[i], mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+            # Evolve output neurons using full L2 vector
+            for i, neuron in enumerate(self.level3):
+                neuron.evolve(l2_feature_vec, y_true[i], mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+                # Update V_m with successful L3 neurons
+                if neuron.last_error is not None and neuron.last_error < self.tau2:
+                    self.V_m.add(neuron.last_weights, neuron.last_bias)
         return y_pred, l1_errors, l2_errors, l3_outputs
 
     def train(self, X, y, y_oh, epochs=EPOCHS, X_val=None, y_val=None, y_val_oh=None):
@@ -536,16 +543,26 @@ class RegressionEvoNet:
         l3_inputs = l2_marks
         assert len(l3_inputs) == LEVEL2_NEURONS
         
-        # CHANGED: Single output neuron instead of multiple class neurons
-        l3_input = l3_inputs[0] if not isinstance(l3_inputs[0], tuple) else l3_inputs[0][1]
-        out, _ = self.output_neuron.forward(np.full(LEVEL2_NEURONS, l3_input), y_true, mse_loss, mut_strength, self.V_m.get())
+        # CHANGED: Use full L2 feature vector for regression output
+        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l3_inputs], dtype=np.float32)
+        out, _ = self.output_neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
         
         # CHANGED: No softmax needed for regression
         y_pred = out  # Single continuous value
         
         # KEPT THE SAME: Evolution for output neuron
         if train:
-            self.output_neuron.evolve(np.full(LEVEL2_NEURONS, l3_input), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+            # Evolve L1 neurons with tau1
+            for neuron in self.level1:
+                neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1)
+            # Evolve L2 neurons with tau2
+            for neuron, inp in zip(self.level2, l2_inputs):
+                inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
+                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+            # Evolve regression output using full L2 vector
+            self.output_neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+            if self.output_neuron.last_error is not None and self.output_neuron.last_error < self.tau2:
+                self.V_m.add(self.output_neuron.last_weights, self.output_neuron.last_bias)
         
         return y_pred, l1_errors, l2_errors
 
