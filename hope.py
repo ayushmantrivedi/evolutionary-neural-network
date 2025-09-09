@@ -57,6 +57,56 @@ warnings.filterwarnings('ignore')
 # Global variable to track target scaling
 target_scaler_global = None
 
+def _pct_change_1d(a):
+    a = np.asarray(a, dtype=np.float64).ravel()
+    if a.size < 2:
+        return np.zeros_like(a, dtype=np.float64)
+    prev = a[:-1]
+    denom = np.maximum(np.abs(prev), 1e-8)
+    pc = (a[1:] - prev) / denom
+    return np.concatenate(([0.0], pc))
+
+def _adaptive_scale_matrix(X):
+    X = np.asarray(X, dtype=np.float64)
+    n_samples, n_features = X.shape
+    X_scaled = np.empty_like(X, dtype=np.float64)
+    for j in range(n_features):
+        col = X[:, j]
+        # Detect constant columns early
+        if np.allclose(col, col[0]):
+            X_scaled[:, j] = 0.0
+            continue
+        # Quick check if already roughly standardized
+        col_mean = np.mean(col)
+        col_std = np.std(col)
+        if np.abs(col_mean) < 1e-6 and 0.8 < (col_std + 1e-12) < 1.2:
+            X_scaled[:, j] = col
+            continue
+        # Outlier-aware decision using IQR
+        q1, q3 = np.percentile(col, [25, 75])
+        iqr = q3 - q1
+        median = np.median(col)
+        if iqr <= 1e-12:
+            # Fallback to standard scaling
+            std = np.std(col)
+            if std <= 1e-12:
+                X_scaled[:, j] = 0.0
+            else:
+                X_scaled[:, j] = (col - np.mean(col)) / (std + 1e-12)
+            continue
+        outlier_mask = np.abs(col - median) > (1.5 * iqr)
+        outlier_ratio = np.mean(outlier_mask)
+        if outlier_ratio > 0.05:
+            # Robust scaling via median/IQR
+            X_scaled[:, j] = (col - median) / (iqr + 1e-12)
+        else:
+            std = np.std(col)
+            if std <= 1e-12:
+                X_scaled[:, j] = 0.0
+            else:
+                X_scaled[:, j] = (col - np.mean(col)) / (std + 1e-12)
+    return X_scaled
+
 def preprocess_dataset(X, y, dataset_name="Dataset"):
     """
     Centralized preprocessing function for all datasets.
@@ -83,12 +133,63 @@ def preprocess_dataset(X, y, dataset_name="Dataset"):
     
     if is_regression:
         print("Regression dataset detected. Skipping SMOTE (not applicable).")
-        # Standardize features for regression
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-        
+        # Co-movement and major-change feature engineering
+        y_flat = y.astype(np.float64).ravel()
+        y_pc = _pct_change_1d(y_flat)
+        n_features = X.shape[1]
+        feature_names = [f"Feature_{i}" for i in range(n_features)]
+        corrs = []
+        xpc_list = []
+        for j in range(n_features):
+            xj = X[:, j].astype(np.float64)
+            xj_pc = _pct_change_1d(xj)
+            xpc_list.append(xj_pc)
+            if np.std(xj_pc) < 1e-12 or np.std(y_pc) < 1e-12:
+                corrs.append(0.0)
+            else:
+                c = np.corrcoef(xj_pc, y_pc)[0, 1]
+                if np.isnan(c):
+                    c = 0.0
+                corrs.append(float(c))
+        corrs = np.array(corrs, dtype=np.float64)
+
+        # Aggregate co-moving features
+        comove_thresh = 0.3
+        comove_idx = np.where(np.abs(corrs) >= comove_thresh)[0]
+        if comove_idx.size > 0:
+            Xpc_sel = np.stack([xpc_list[k] for k in comove_idx], axis=1)
+            # Standardize each selected pc column
+            Xpc_sel = _adaptive_scale_matrix(Xpc_sel)
+            w = np.abs(corrs[comove_idx])
+            w = w / (np.sum(w) + 1e-12)
+            trend_comoving = Xpc_sel.dot(w)
+        else:
+            trend_comoving = np.zeros(X.shape[0], dtype=np.float64)
+
+        # Aggregate major-change but non co-moving features
+        non_idx = np.where(np.abs(corrs) < 0.1)[0]
+        if non_idx.size > 0:
+            vols = np.array([np.std(xpc_list[k]) for k in non_idx], dtype=np.float64)
+            # pick top-k by volatility
+            k_keep = int(max(1, min(5, np.ceil(0.2 * non_idx.size))))
+            top_k_idx_local = np.argsort(vols)[-k_keep:]
+            idx_pick = non_idx[top_k_idx_local]
+            Xpc_sel2 = np.stack([xpc_list[k] for k in idx_pick], axis=1)
+            Xpc_sel2 = _adaptive_scale_matrix(Xpc_sel2)
+            w2 = vols[top_k_idx_local]
+            w2 = w2 / (np.sum(w2) + 1e-12)
+            major_change_signal = Xpc_sel2.dot(w2)
+        else:
+            major_change_signal = np.zeros(X.shape[0], dtype=np.float64)
+
+        # Augment original features with engineered signals
+        X_aug = np.column_stack([X.astype(np.float64), trend_comoving, major_change_signal])
+        aug_names = feature_names + ["trend_comoving", "major_change_signal"]
+
+        # Adaptive column-wise scaling
+        X_scaled = _adaptive_scale_matrix(X_aug)
         print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
-        return X_scaled, y, [f"Feature_{i}" for i in range(X_scaled.shape[1])]
+        return X_scaled, y, aug_names
     
     elif is_multi_class:
         print("Multi-class classification detected. Skipping SMOTE to avoid confusion.")
@@ -98,9 +199,8 @@ def preprocess_dataset(X, y, dataset_name="Dataset"):
         unique, counts = np.unique(y, return_counts=True)
         print(f"Original class distribution: {dict(zip(unique, counts))}")
         
-        # Standardize features without SMOTE
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        # Adaptive column-wise scaling without SMOTE
+        X_scaled = _adaptive_scale_matrix(X)
         
         print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
         return X_scaled, y, [f"Feature_{i}" for i in range(X_scaled.shape[1])]
@@ -141,9 +241,8 @@ def preprocess_dataset(X, y, dataset_name="Dataset"):
         else:
             print("✅ Binary classification dataset is balanced. No SMOTE needed.")
         
-        # Standardize features
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        # Adaptive column-wise scaling
+        X_scaled = _adaptive_scale_matrix(X)
         
         print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
         return X_scaled, y, [f"Feature_{i}" for i in range(X_scaled.shape[1])]
