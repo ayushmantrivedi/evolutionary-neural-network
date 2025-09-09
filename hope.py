@@ -859,10 +859,13 @@ def clean_dataset(df):
     # Impute missing values
     for col in df.columns:
         if df[col].dtype == 'O':
-            mode = df[col].mode()[0]
-            df[col] = df[col].fillna(mode)
+            modes = df[col].mode(dropna=True)
+            fill_value = modes.iloc[0] if not modes.empty else ''
+            df[col] = df[col].fillna(fill_value)
         else:
             mean = df[col].mean()
+            if pd.isna(mean):
+                mean = 0
             df[col] = df[col].fillna(mean)
     print("Imputed missing values (mean for numeric, mode for categorical).")
     return df
