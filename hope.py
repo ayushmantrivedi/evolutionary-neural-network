@@ -133,63 +133,61 @@ def preprocess_dataset(X, y, dataset_name="Dataset"):
     
     if is_regression:
         print("Regression dataset detected. Skipping SMOTE (not applicable).")
-        # Co-movement and major-change feature engineering
-        y_flat = y.astype(np.float64).ravel()
-        y_pc = _pct_change_1d(y_flat)
         n_features = X.shape[1]
         feature_names = [f"Feature_{i}" for i in range(n_features)]
-        corrs = []
-        xpc_list = []
-        for j in range(n_features):
-            xj = X[:, j].astype(np.float64)
-            xj_pc = _pct_change_1d(xj)
-            xpc_list.append(xj_pc)
-            if np.std(xj_pc) < 1e-12 or np.std(y_pc) < 1e-12:
-                corrs.append(0.0)
+        # Use trend features only for datasets that look temporal; skip for Housing
+        dataset_name_lower = str(dataset_name).lower()
+        looks_temporal = any(k in dataset_name_lower for k in ["telemetry", "stock", "time", "series"]) and (X.shape[0] >= 5)
+        if looks_temporal:
+            y_flat = y.astype(np.float64).ravel()
+            y_pc = _pct_change_1d(y_flat)
+            corrs = []
+            xpc_list = []
+            for j in range(n_features):
+                xj = X[:, j].astype(np.float64)
+                xj_pc = _pct_change_1d(xj)
+                xpc_list.append(xj_pc)
+                if np.std(xj_pc) < 1e-12 or np.std(y_pc) < 1e-12:
+                    corrs.append(0.0)
+                else:
+                    c = np.corrcoef(xj_pc, y_pc)[0, 1]
+                    if np.isnan(c):
+                        c = 0.0
+                    corrs.append(float(c))
+            corrs = np.array(corrs, dtype=np.float64)
+            comove_thresh = 0.3
+            comove_idx = np.where(np.abs(corrs) >= comove_thresh)[0]
+            if comove_idx.size > 0:
+                Xpc_sel = np.stack([xpc_list[k] for k in comove_idx], axis=1)
+                Xpc_sel = _adaptive_scale_matrix(Xpc_sel)
+                w = np.abs(corrs[comove_idx])
+                w = w / (np.sum(w) + 1e-12)
+                trend_comoving = Xpc_sel.dot(w)
             else:
-                c = np.corrcoef(xj_pc, y_pc)[0, 1]
-                if np.isnan(c):
-                    c = 0.0
-                corrs.append(float(c))
-        corrs = np.array(corrs, dtype=np.float64)
-
-        # Aggregate co-moving features
-        comove_thresh = 0.3
-        comove_idx = np.where(np.abs(corrs) >= comove_thresh)[0]
-        if comove_idx.size > 0:
-            Xpc_sel = np.stack([xpc_list[k] for k in comove_idx], axis=1)
-            # Standardize each selected pc column
-            Xpc_sel = _adaptive_scale_matrix(Xpc_sel)
-            w = np.abs(corrs[comove_idx])
-            w = w / (np.sum(w) + 1e-12)
-            trend_comoving = Xpc_sel.dot(w)
+                trend_comoving = np.zeros(X.shape[0], dtype=np.float64)
+            non_idx = np.where(np.abs(corrs) < 0.1)[0]
+            if non_idx.size > 0:
+                vols = np.array([np.std(xpc_list[k]) for k in non_idx], dtype=np.float64)
+                k_keep = int(max(1, min(5, np.ceil(0.2 * non_idx.size))))
+                top_k_idx_local = np.argsort(vols)[-k_keep:]
+                idx_pick = non_idx[top_k_idx_local]
+                Xpc_sel2 = np.stack([xpc_list[k] for k in idx_pick], axis=1)
+                Xpc_sel2 = _adaptive_scale_matrix(Xpc_sel2)
+                w2 = vols[top_k_idx_local]
+                w2 = w2 / (np.sum(w2) + 1e-12)
+                major_change_signal = Xpc_sel2.dot(w2)
+            else:
+                major_change_signal = np.zeros(X.shape[0], dtype=np.float64)
+            X_aug = np.column_stack([X.astype(np.float64), trend_comoving, major_change_signal])
+            aug_names = feature_names + ["trend_comoving", "major_change_signal"]
+            X_scaled = _adaptive_scale_matrix(X_aug)
+            print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
+            return X_scaled, y, aug_names
         else:
-            trend_comoving = np.zeros(X.shape[0], dtype=np.float64)
-
-        # Aggregate major-change but non co-moving features
-        non_idx = np.where(np.abs(corrs) < 0.1)[0]
-        if non_idx.size > 0:
-            vols = np.array([np.std(xpc_list[k]) for k in non_idx], dtype=np.float64)
-            # pick top-k by volatility
-            k_keep = int(max(1, min(5, np.ceil(0.2 * non_idx.size))))
-            top_k_idx_local = np.argsort(vols)[-k_keep:]
-            idx_pick = non_idx[top_k_idx_local]
-            Xpc_sel2 = np.stack([xpc_list[k] for k in idx_pick], axis=1)
-            Xpc_sel2 = _adaptive_scale_matrix(Xpc_sel2)
-            w2 = vols[top_k_idx_local]
-            w2 = w2 / (np.sum(w2) + 1e-12)
-            major_change_signal = Xpc_sel2.dot(w2)
-        else:
-            major_change_signal = np.zeros(X.shape[0], dtype=np.float64)
-
-        # Augment original features with engineered signals
-        X_aug = np.column_stack([X.astype(np.float64), trend_comoving, major_change_signal])
-        aug_names = feature_names + ["trend_comoving", "major_change_signal"]
-
-        # Adaptive column-wise scaling
-        X_scaled = _adaptive_scale_matrix(X_aug)
-        print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
-        return X_scaled, y, aug_names
+            # Non-temporal regression: only adaptive scale
+            X_scaled = _adaptive_scale_matrix(X)
+            print(f"Preprocessing complete. Final shape: {X_scaled.shape}")
+            return X_scaled, y, feature_names
     
     elif is_multi_class:
         print("Multi-class classification detected. Skipping SMOTE to avoid confusion.")
