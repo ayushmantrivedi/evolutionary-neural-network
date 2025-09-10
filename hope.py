@@ -901,8 +901,8 @@ def load_housing_dataset(custom_path=None):
         # Always standardize housing target
         target_scaler = StandardScaler()
         y = target_scaler.fit_transform(y)
-        global target_scaler_global
-        target_scaler_global = target_scaler
+        # set module-level scaler reference
+        globals()['target_scaler_global'] = target_scaler
         print(f"Number of samples: {X.shape[0]}")
         print(f"Number of features: {X.shape[1]}")
         print("\nFeature names:")
@@ -921,8 +921,8 @@ def load_housing_dataset(custom_path=None):
         # Always standardize housing target
         target_scaler = StandardScaler()
         y = target_scaler.fit_transform(y)
-        global target_scaler_global
-        target_scaler_global = target_scaler
+        # set module-level scaler reference
+        globals()['target_scaler_global'] = target_scaler
         print("\nDataset Information:")
         print(f"Number of samples: {X.shape[0]}")
         print(f"Number of features: {X.shape[1]}")
@@ -1267,8 +1267,8 @@ def load_custom_csv_dataset(custom_path):
         target_scaler = StandardScaler()
         y = target_scaler.fit_transform(y_raw)
         print(f"✅ Target standardized: mean~0, std~1")
-        global target_scaler_global
-        target_scaler_global = target_scaler
+        # set module-level scaler reference
+        globals()['target_scaler_global'] = target_scaler
     
     feature_names = feature_df.columns.tolist()
     print(f"Number of samples: {X.shape[0]}")
