@@ -898,6 +898,11 @@ def load_housing_dataset(custom_path=None):
         X = scaler.fit_transform(feature_df.values.astype(np.float64))
         target_col = df.iloc[:, -1]
         y = target_col.values.reshape(-1, 1).astype(np.float64)
+        # Always standardize housing target
+        target_scaler = StandardScaler()
+        y = target_scaler.fit_transform(y)
+        global target_scaler_global
+        target_scaler_global = target_scaler
         print(f"Number of samples: {X.shape[0]}")
         print(f"Number of features: {X.shape[1]}")
         print("\nFeature names:")
@@ -913,6 +918,11 @@ def load_housing_dataset(custom_path=None):
         housing = fetch_california_housing()
         X = housing.data
         y = housing.target.reshape(-1, 1)
+        # Always standardize housing target
+        target_scaler = StandardScaler()
+        y = target_scaler.fit_transform(y)
+        global target_scaler_global
+        target_scaler_global = target_scaler
         print("\nDataset Information:")
         print(f"Number of samples: {X.shape[0]}")
         print(f"Number of features: {X.shape[1]}")
