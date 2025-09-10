@@ -266,6 +266,12 @@ LOCAL_GD_LR = 0.05
 LOCAL_LINESEARCH_ALPHAS = [0.0, 0.05, 0.1, 0.2, 0.3, 0.5]
 LOCAL_MIN_IMPROVEMENT = 1e-8
 
+# Regression-specific hyperparameters
+MAX_MUT_STRENGTH = 0.2
+MUT_STRENGTH_CAP = 3.0
+MUT_STRENGTH_POWER = 1.0
+LOCAL_GD_LR_REGRESSION = 0.01
+
 # Multi-class Neural Network Classes
 @njit
 def population_forward(x, weights, biases):
@@ -320,7 +326,7 @@ class EvoNeuron:
     def _activate(self, x):
         return x
 
-    def evolve(self, x, y_true, error_fn, mutation_strength, V_m=None, tau=None):
+    def evolve(self, x, y_true, error_fn, mutation_strength, V_m=None, tau=None, local_gd_lr=None):
         self._check_population_shapes()
         errors = []
         for ind in self.population:
@@ -340,6 +346,7 @@ class EvoNeuron:
             err_current = error_fn(out, y_true)
             trigger = (tau is None) or (err_current >= tau)
             if trigger:
+                lr = LOCAL_GD_LR if (local_gd_lr is None) else float(local_gd_lr)
                 d_hat_w = None
                 d_hat_b = None
                 if V_m and len(V_m) > 0:
@@ -357,8 +364,8 @@ class EvoNeuron:
                 else:
                     y_bar = float(y_true)
                 grad_signal = 2.0 * (float(out) - y_bar)
-                s_w = (-LOCAL_GD_LR * grad_signal) * x.astype(np.float32)
-                s_b = np.float32(-LOCAL_GD_LR * grad_signal)
+                s_w = (-lr * grad_signal) * x.astype(np.float32)
+                s_b = np.float32(-lr * grad_signal)
                 if d_hat_w is not None:
                     dot_sb = float(np.dot(s_w, d_hat_w) + float(s_b) * float(d_hat_b))
                     if dot_sb < 0.0:
@@ -590,9 +597,12 @@ class RegressionEvoNet:
         self.global_error = 1.0
 
     def get_mutation_strength(self):
-        # KEPT THE SAME: Adaptive mutation strength
-        mut_strength = self.mut_strength_base * (self.global_error ** 2)
-        return max(mut_strength, MIN_MUT_STRENGTH)
+        # Regression-specific: cap and power transform
+        capped_error = min(float(self.global_error), MUT_STRENGTH_CAP)
+        mut_strength = self.mut_strength_base * (capped_error ** MUT_STRENGTH_POWER)
+        mut_strength = max(mut_strength, MIN_MUT_STRENGTH)
+        mut_strength = min(mut_strength, MAX_MUT_STRENGTH)
+        return mut_strength
 
     def forward(self, x, y_true, train=True):
         mut_strength = self.get_mutation_strength()
@@ -651,13 +661,13 @@ class RegressionEvoNet:
         if train:
             # Evolve L1 neurons with tau1
             for neuron in self.level1:
-                neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1)
+                neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1, local_gd_lr=LOCAL_GD_LR_REGRESSION)
             # Evolve L2 neurons with tau2
             for neuron, inp in zip(self.level2, l2_inputs):
                 inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
-                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
-            # Evolve regression output using full L2 vector
-            self.output_neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2, local_gd_lr=LOCAL_GD_LR_REGRESSION)
+            # Evolve regression output using full L2 vector (smaller local GD LR)
+            self.output_neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2, local_gd_lr=LOCAL_GD_LR_REGRESSION)
             if self.output_neuron.last_error is not None and self.output_neuron.last_error < self.tau2:
                 self.V_m.add(self.output_neuron.last_weights, self.output_neuron.last_bias)
         
@@ -1242,23 +1252,13 @@ def load_custom_csv_dataset(custom_path):
         y = y_encoded.reshape(-1, 1)
         print(f"Target encoding: {dict(zip(le.classes_, le.transform(le.classes_)))}")
     else:
-        # For regression problems, also scale the target to prevent numerical issues
+        # For regression problems, always standardize the target for numerical stability
         y_raw = target_col.values.reshape(-1, 1)
-        
-        # Check if target values are very large (like volume in trillions)
-        y_max = np.max(np.abs(y_raw))
-        if y_max > 1e6:  # If max value > 1 million
-            print(f"⚠️  Large target values detected (max: {y_max:.2e}). Scaling target for numerical stability.")
-            target_scaler = StandardScaler()
-            y = target_scaler.fit_transform(y_raw)
-            print(f"✅ Target scaled to range [{np.min(y):.3f}, {np.max(y):.3f}]")
-            # Store target scaler for later use
-            global target_scaler_global
-            target_scaler_global = target_scaler
-        else:
-            y = y_raw
-            print(f"✅ Target values in reasonable range [{np.min(y):.3f}, {np.max(y):.3f}]")
-            target_scaler_global = None
+        target_scaler = StandardScaler()
+        y = target_scaler.fit_transform(y_raw)
+        print(f"✅ Target standardized: mean~0, std~1")
+        global target_scaler_global
+        target_scaler_global = target_scaler
     
     feature_names = feature_df.columns.tolist()
     print(f"Number of samples: {X.shape[0]}")
