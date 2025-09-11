@@ -499,13 +499,17 @@ class MultiClassEvoNet:
         mid_outputs = np.array(mid_outputs, dtype=object)
         mid_errors = np.array(mid_errors)
 
-        # L2 forward (consume full mid vector values)
-        l2_inputs = mid_marks
-        assert len(l2_inputs) == LEVEL_MID_NEURONS
+        # L2 forward: select best 20 from mid by lowest error and pass only those
         l2_outputs = []
         l2_errors = []
         l2_marks = []
-        mid_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l2_inputs], dtype=np.float32)
+        # Indices of best LEVEL2_NEURONS mid neurons
+        best_mid_idx = np.argsort(mid_errors)[:LEVEL2_NEURONS]
+        selected_mid_vals = []
+        for idx in best_mid_idx:
+            v = mid_marks[idx]
+            selected_mid_vals.append(v[1] if isinstance(v, tuple) and v[0] == '*' else v)
+        mid_feature_vec = np.array(selected_mid_vals, dtype=np.float32)
         for neuron in self.level2:
             out, err = neuron.forward(mid_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
             l2_outputs.append(out)
@@ -665,11 +669,16 @@ class RegressionEvoNet:
         mid_outputs = np.array(mid_outputs, dtype=object)
         mid_errors = np.array(mid_errors)
 
-        # Level 2 (consume full mid vector)
+        # Level 2 (consume best 20 mid outputs)
         l2_outputs = []
         l2_errors = []
         l2_marks = []
-        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in mid_marks], dtype=np.float32)
+        best_mid_idx = np.argsort(mid_errors)[:LEVEL2_NEURONS]
+        selected_mid_vals = []
+        for idx in best_mid_idx:
+            v = mid_marks[idx]
+            selected_mid_vals.append(v[1] if isinstance(v, tuple) and v[0] == '*' else v)
+        l2_feature_vec = np.array(selected_mid_vals, dtype=np.float32)
         for neuron in self.level2:
             out2, err2 = neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
             l2_outputs.append(out2)
