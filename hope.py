@@ -505,9 +505,9 @@ class MultiClassEvoNet:
         l2_outputs = []
         l2_errors = []
         l2_marks = []
-        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l2_inputs], dtype=np.float32)
+        mid_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l2_inputs], dtype=np.float32)
         for neuron in self.level2:
-            out, err = neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
+            out, err = neuron.forward(mid_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
             l2_outputs.append(out)
             l2_errors.append(err)
             if err < self.tau2:
@@ -535,7 +535,7 @@ class MultiClassEvoNet:
                 neuron.evolve(l1_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau_mid)
             # Evolve L2 neurons with tau2 using full mid vector
             for neuron in self.level2:
-                neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+                neuron.evolve(mid_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
             # Evolve output neurons using full L2 vector
             for i, neuron in enumerate(self.level3):
                 neuron.evolve(l2_feature_vec, y_true[i], mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
