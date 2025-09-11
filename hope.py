@@ -246,13 +246,15 @@ def preprocess_dataset(X, y, dataset_name="Dataset"):
         return X_scaled, y, [f"Feature_{i}" for i in range(X_scaled.shape[1])]
 
 # Multi-class Neural Network Hyperparameters
-LEVEL1_NEURONS = 50
+LEVEL1_NEURONS = 40
+LEVEL_MID_NEURONS = 30
 LEVEL2_NEURONS = 20
 POP_SIZE = 20
 VM_HISTORY = 20
 VM_INFLUENCE_PROB = 0.2
 VM_IMPROVEMENT_THRESH = 0.15
 TAU1 = 0.15
+TAU_MID = 0.12
 TAU2 = 0.10
 MUT_STRENGTH_BASE = 0.1
 EPOCHS = 50
@@ -448,11 +450,13 @@ class SignificantMutationVector:
 class MultiClassEvoNet:
     def __init__(self, input_dim, num_classes):
         self.level1 = [EvoNeuron(input_dim) for _ in range(LEVEL1_NEURONS)]
-        self.level2 = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL2_NEURONS)]
+        self.level_mid = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL_MID_NEURONS)]
+        self.level2 = [EvoNeuron(LEVEL_MID_NEURONS) for _ in range(LEVEL2_NEURONS)]
         self.level3 = [OutputNeuron(LEVEL2_NEURONS) for _ in range(num_classes)]
         self.num_classes = num_classes
         self.V_m = SignificantMutationVector()
         self.tau1 = TAU1
+        self.tau_mid = TAU_MID
         self.tau2 = TAU2
         self.mut_strength_base = MUT_STRENGTH_BASE
         self.global_error = 1.0
@@ -476,17 +480,34 @@ class MultiClassEvoNet:
                 l1_marks.append(('*', out))
         l1_outputs = np.array(l1_outputs, dtype=object)
         l1_errors = np.array(l1_errors)
-        l2_inputs = l1_marks
-        assert len(l2_inputs) == LEVEL1_NEURONS
+        # Mid layer forward (consume full L1 vector values)
+        mid_inputs = l1_marks
+        assert len(mid_inputs) == LEVEL1_NEURONS
+        mid_outputs = []
+        mid_errors = []
+        mid_marks = []
+        # Build full vector from L1 for mid layer consumption per neuron
+        l1_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in mid_inputs], dtype=np.float32)
+        for neuron in self.level_mid:
+            out, err = neuron.forward(l1_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
+            mid_outputs.append(out)
+            mid_errors.append(err)
+            if err < self.tau_mid:
+                mid_marks.append(out)
+            else:
+                mid_marks.append(('*', out))
+        mid_outputs = np.array(mid_outputs, dtype=object)
+        mid_errors = np.array(mid_errors)
+
+        # L2 forward (consume full mid vector values)
+        l2_inputs = mid_marks
+        assert len(l2_inputs) == LEVEL_MID_NEURONS
         l2_outputs = []
         l2_errors = []
         l2_marks = []
-        for neuron, inp in zip(self.level2, l2_inputs):
-            if isinstance(inp, tuple) and inp[0] == '*':
-                inp_val = inp[1]
-            else:
-                inp_val = inp
-            out, err = neuron.forward(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get())
+        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l2_inputs], dtype=np.float32)
+        for neuron in self.level2:
+            out, err = neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
             l2_outputs.append(out)
             l2_errors.append(err)
             if err < self.tau2:
@@ -509,10 +530,12 @@ class MultiClassEvoNet:
             # Evolve L1 neurons with tau1
             for neuron in self.level1:
                 neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1)
-            # Evolve L2 neurons with tau2
-            for neuron, inp in zip(self.level2, l2_inputs):
-                inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
-                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
+            # Evolve mid neurons with tau_mid using full L1 vector
+            for neuron in self.level_mid:
+                neuron.evolve(l1_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau_mid)
+            # Evolve L2 neurons with tau2 using full mid vector
+            for neuron in self.level2:
+                neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
             # Evolve output neurons using full L2 vector
             for i, neuron in enumerate(self.level3):
                 neuron.evolve(l2_feature_vec, y_true[i], mse_loss, mut_strength, self.V_m.get(), tau=self.tau2)
@@ -582,9 +605,10 @@ class RegressionOutputNeuron(EvoNeuron):
 
 class RegressionEvoNet:
     def __init__(self, input_dim):
-        # KEPT THE SAME: Layer 1 and Layer 2
+        # Layers: L1 -> Mid -> L2
         self.level1 = [EvoNeuron(input_dim) for _ in range(LEVEL1_NEURONS)]
-        self.level2 = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL2_NEURONS)]
+        self.level_mid = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL_MID_NEURONS)]
+        self.level2 = [EvoNeuron(LEVEL_MID_NEURONS) for _ in range(LEVEL2_NEURONS)]
         
         # CHANGED: Single output neuron instead of multiple class neurons
         self.output_neuron = RegressionOutputNeuron(LEVEL2_NEURONS)
@@ -592,6 +616,7 @@ class RegressionEvoNet:
         # KEPT THE SAME: All evolutionary mechanisms
         self.V_m = SignificantMutationVector()
         self.tau1 = TAU1
+        self.tau_mid = TAU_MID
         self.tau2 = TAU2
         self.mut_strength_base = MUT_STRENGTH_BASE
         self.global_error = 1.0
@@ -607,7 +632,7 @@ class RegressionEvoNet:
     def forward(self, x, y_true, train=True):
         mut_strength = self.get_mutation_strength()
         
-        # KEPT THE SAME: Level 1 (sequential for speed)
+        # Level 1 (sequential for speed)
         l1_outputs = []
         l1_errors = []
         l1_marks = []
@@ -622,36 +647,42 @@ class RegressionEvoNet:
         l1_outputs = np.array(l1_outputs, dtype=object)
         l1_errors = np.array(l1_errors)
         
-        # KEPT THE SAME: Level 1: pass all outputs, but mark failed ones
-        l2_inputs = l1_marks
-        assert len(l2_inputs) == LEVEL1_NEURONS
-        
-        # KEPT THE SAME: Level 2 (sequential for speed)
+        # Mid layer
+        mid_inputs = l1_marks
+        assert len(mid_inputs) == LEVEL1_NEURONS
+        mid_outputs = []
+        mid_errors = []
+        mid_marks = []
+        l1_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in mid_inputs], dtype=np.float32)
+        for neuron in self.level_mid:
+            out_mid, err_mid = neuron.forward(l1_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
+            mid_outputs.append(out_mid)
+            mid_errors.append(err_mid)
+            if err_mid < self.tau_mid:
+                mid_marks.append(out_mid)
+            else:
+                mid_marks.append(('*', out_mid))
+        mid_outputs = np.array(mid_outputs, dtype=object)
+        mid_errors = np.array(mid_errors)
+
+        # Level 2 (consume full mid vector)
         l2_outputs = []
         l2_errors = []
         l2_marks = []
-        for neuron, inp in zip(self.level2, l2_inputs):
-            # If input is marked, extract value for computation
-            if isinstance(inp, tuple) and inp[0] == '*':
-                inp_val = inp[1]
+        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in mid_marks], dtype=np.float32)
+        for neuron in self.level2:
+            out2, err2 = neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
+            l2_outputs.append(out2)
+            l2_errors.append(err2)
+            if err2 < self.tau2:
+                l2_marks.append(out2)
             else:
-                inp_val = inp
-            out, err = neuron.forward(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get())
-            l2_outputs.append(out)
-            l2_errors.append(err)
-            if err < self.tau2:
-                l2_marks.append(out)
-            else:
-                l2_marks.append(('*', out))  # Mark failed neuron output as tuple
+                l2_marks.append(('*', out2))
         l2_outputs = np.array(l2_outputs, dtype=object)
         l2_errors = np.array(l2_errors)
+        assert len(l2_marks) == LEVEL2_NEURONS
         
-        # KEPT THE SAME: Level 2: pass all outputs, but mark failed ones
-        l3_inputs = l2_marks
-        assert len(l3_inputs) == LEVEL2_NEURONS
-        
-        # CHANGED: Use full L2 feature vector for regression output
-        l2_feature_vec = np.array([v[1] if isinstance(v, tuple) and v[0] == '*' else v for v in l3_inputs], dtype=np.float32)
+        # Output uses full L2 vector
         out, _ = self.output_neuron.forward(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get())
         
         # CHANGED: No softmax needed for regression
@@ -659,14 +690,16 @@ class RegressionEvoNet:
         
         # KEPT THE SAME: Evolution for output neuron
         if train:
-            # Evolve L1 neurons with tau1
+            # Evolve L1
             for neuron in self.level1:
                 neuron.evolve(x, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau1, local_gd_lr=LOCAL_GD_LR_REGRESSION)
-            # Evolve L2 neurons with tau2
-            for neuron, inp in zip(self.level2, l2_inputs):
-                inp_val = inp[1] if isinstance(inp, tuple) and inp[0] == '*' else inp
-                neuron.evolve(np.full(LEVEL1_NEURONS, inp_val), y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2, local_gd_lr=LOCAL_GD_LR_REGRESSION)
-            # Evolve regression output using full L2 vector (smaller local GD LR)
+            # Evolve Mid using full L1 vector
+            for neuron in self.level_mid:
+                neuron.evolve(l1_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau_mid, local_gd_lr=LOCAL_GD_LR_REGRESSION)
+            # Evolve L2 using full Mid vector
+            for neuron in self.level2:
+                neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2, local_gd_lr=LOCAL_GD_LR_REGRESSION)
+            # Evolve Output using full L2 vector (smaller local GD LR)
             self.output_neuron.evolve(l2_feature_vec, y_true, mse_loss, mut_strength, self.V_m.get(), tau=self.tau2, local_gd_lr=LOCAL_GD_LR_REGRESSION)
             if self.output_neuron.last_error is not None and self.output_neuron.last_error < self.tau2:
                 self.V_m.add(self.output_neuron.last_weights, self.output_neuron.last_bias)
