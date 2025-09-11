@@ -451,7 +451,7 @@ class MultiClassEvoNet:
     def __init__(self, input_dim, num_classes):
         self.level1 = [EvoNeuron(input_dim) for _ in range(LEVEL1_NEURONS)]
         self.level_mid = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL_MID_NEURONS)]
-        self.level2 = [EvoNeuron(LEVEL_MID_NEURONS) for _ in range(LEVEL2_NEURONS)]
+        self.level2 = [EvoNeuron(LEVEL2_NEURONS) for _ in range(LEVEL2_NEURONS)]
         self.level3 = [OutputNeuron(LEVEL2_NEURONS) for _ in range(num_classes)]
         self.num_classes = num_classes
         self.V_m = SignificantMutationVector()
@@ -612,7 +612,7 @@ class RegressionEvoNet:
         # Layers: L1 -> Mid -> L2
         self.level1 = [EvoNeuron(input_dim) for _ in range(LEVEL1_NEURONS)]
         self.level_mid = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL_MID_NEURONS)]
-        self.level2 = [EvoNeuron(LEVEL_MID_NEURONS) for _ in range(LEVEL2_NEURONS)]
+        self.level2 = [EvoNeuron(LEVEL2_NEURONS) for _ in range(LEVEL2_NEURONS)]
         
         # CHANGED: Single output neuron instead of multiple class neurons
         self.output_neuron = RegressionOutputNeuron(LEVEL2_NEURONS)
