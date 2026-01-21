@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evonet"
+version = "1.0.0"
+description = "Evolutionary Neural Network - No Backpropagation Training"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Ayushman Trivedi"}
+]
+keywords = [
+    "neural-network",
+    "evolutionary-algorithms",
+    "machine-learning",
+    "no-backpropagation",
+    "genetic-algorithms"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0",
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+full = [
+    "imbalanced-learn>=0.10.0",
+    "numba>=0.56.0",
+]
+gpu = [
+    "torch>=2.0.0",
+]
+all = [
+    "imbalanced-learn>=0.10.0",
+    "numba>=0.56.0",
+    "torch>=2.0.0",
+]
+
+[project.scripts]
+evonet = "evonet.__main__:main"
+
+[project.urls]
+"Homepage" = "https://github.com/ayushmantrivedi/evolutionary-neural-network"
+"Bug Tracker" = "https://github.com/ayushmantrivedi/evolutionary-neural-network/issues"
+
+[tool.setuptools.packages.find]
+include = ["evonet*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["evonet"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+]

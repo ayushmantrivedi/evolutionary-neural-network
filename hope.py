@@ -54,6 +54,62 @@ except ImportError:
 import warnings
 warnings.filterwarnings('ignore')
 
+# ==========================================
+# CONFIGURATION MODULE
+# ==========================================
+import argparse
+
+# Dynamic output directory - uses project's 'output' folder instead of hardcoded desktop
+DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+
+def get_output_directory():
+    """
+    Get the output directory for saving plots and results.
+    Priority: 1) Environment variable  2) Default project output folder
+    """
+    output_dir = os.environ.get('EVO_OUTPUT_DIR', DEFAULT_OUTPUT_DIR)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
+
+def parse_arguments():
+    """Parse command-line arguments for dataset loading."""
+    parser = argparse.ArgumentParser(
+        description='Evolutionary Neural Network - No Backpropagation Training',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python hope.py --dataset iris
+  python hope.py --dataset cancer --output ./my_results
+  python hope.py --dataset sample_data.csv
+  python hope.py --dataset telemetry_sample.json
+  python hope.py --interactive  (original menu mode)
+        """
+    )
+    parser.add_argument(
+        '--dataset', '-d',
+        type=str,
+        help='Dataset: housing, cancer, iris, wine, digits, or path to CSV/JSON file'
+    )
+    parser.add_argument(
+        '--output', '-o',
+        type=str,
+        default=None,
+        help=f'Output directory for plots (default: ./output/)'
+    )
+    parser.add_argument(
+        '--training-method', '-t',
+        type=int,
+        choices=[1, 2, 3],
+        default=2,
+        help='Regression training: 1=Standard, 2=MiniBatch (default), 3=EarlyStopping'
+    )
+    parser.add_argument(
+        '--interactive', '-i',
+        action='store_true',
+        help='Run in interactive mode (original menu-based interface)'
+    )
+    return parser.parse_args()
+
 # Global variable to track target scaling
 target_scaler_global = None
 
@@ -837,8 +893,7 @@ def load_iris_dataset():
         print(f"  Class {i}: {name}")
     
     # Create visualization of the dataset
-    desktop_dir = r'C:/Users/ayush/Desktop'
-    os.makedirs(desktop_dir, exist_ok=True)
+    output_dir = get_output_directory()
     
     # Class distribution
     unique, counts = np.unique(y, return_counts=True)
@@ -862,7 +917,7 @@ def load_iris_dataset():
     plt.legend()
     
     plt.tight_layout()
-    plt.savefig(os.path.join(desktop_dir, 'iris_dataset_analysis.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'iris_dataset_analysis.png'), bbox_inches='tight')
     plt.close()
     
     print(f"Iris dataset analysis saved to: iris_dataset_analysis.png")
@@ -891,8 +946,7 @@ def load_wine_dataset():
         print(f"  Class {i}: {name}")
     
     # Create visualization of the dataset
-    desktop_dir = r'C:/Users/ayush/Desktop'
-    os.makedirs(desktop_dir, exist_ok=True)
+    output_dir = get_output_directory()
     
     # Class distribution
     unique, counts = np.unique(y, return_counts=True)
@@ -926,7 +980,7 @@ def load_wine_dataset():
     plt.yticks(rotation=0)
     
     plt.tight_layout()
-    plt.savefig(os.path.join(desktop_dir, 'wine_dataset_analysis.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'wine_dataset_analysis.png'), bbox_inches='tight')
     plt.close()
     
     print(f"Wine dataset analysis saved to: wine_dataset_analysis.png")
@@ -950,8 +1004,7 @@ def load_digits_dataset():
     print("\nTarget: Digit recognition (0-9)")
     
     # Create visualization of the dataset
-    desktop_dir = r'C:/Users/ayush/Desktop'
-    os.makedirs(desktop_dir, exist_ok=True)
+    output_dir = get_output_directory()
     
     # Class distribution
     unique, counts = np.unique(y, return_counts=True)
@@ -963,7 +1016,7 @@ def load_digits_dataset():
     plt.xticks(unique.ravel())
     
     plt.tight_layout()
-    plt.savefig(os.path.join(desktop_dir, 'digits_dataset_analysis.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'digits_dataset_analysis.png'), bbox_inches='tight')
     plt.close()
     
     print(f"Digits dataset analysis saved to: digits_dataset_analysis.png")
@@ -1041,8 +1094,7 @@ def load_custom_csv_dataset(custom_path):
         sys.exit(1)
     
     # --- Visualize feature cardinality ---
-    desktop_dir = r'C:/Users/ayush/Desktop'
-    os.makedirs(desktop_dir, exist_ok=True)
+    output_dir = get_output_directory()
     cardinalities = [feature_df[col].nunique() for col in feature_df.columns]
     plt.figure(figsize=(min(16, max(8, len(feature_df.columns)//2)), 4))
     plt.bar(feature_df.columns, cardinalities)
@@ -1050,7 +1102,7 @@ def load_custom_csv_dataset(custom_path):
     plt.ylabel('Unique Values')
     plt.title('Feature Cardinality (Unique Values per Feature)')
     plt.tight_layout()
-    plt.savefig(os.path.join(desktop_dir, 'feature_cardinality.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'feature_cardinality.png'), bbox_inches='tight')
     plt.close()
     
     # Convert categorical variables to dummy variables with error handling
@@ -1158,7 +1210,7 @@ def load_custom_csv_dataset(custom_path):
     plt.xlabel('Class')
     plt.ylabel('Count')
     plt.title('Class Distribution in Target')
-    plt.savefig(os.path.join(desktop_dir, 'class_distribution.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'class_distribution.png'), bbox_inches='tight')
     plt.close()
     # print("Class distribution in target:")
     # for val, count in zip(unique, counts):
@@ -1317,15 +1369,14 @@ def load_telemetry_dataset(json_path):
         print(f"{status}: {count} samples ({count/len(y)*100:.1f}%)")
     
     # Only create visualizations that help neural network learning
-    desktop_dir = r'C:/Users/ayush/Desktop'
-    os.makedirs(desktop_dir, exist_ok=True)
+    output_dir = get_output_directory()
     
     # Class distribution - HELPS: Shows if we need SMOTE balancing
     plt.figure(figsize=(8, 6))
     status_labels = ['unhealthy', 'healthy']
     plt.pie(counts, labels=status_labels, autopct='%1.1f%%', startangle=90)
     plt.title('Device Health Status Distribution (Helps decide SMOTE balancing)')
-    plt.savefig(os.path.join(desktop_dir, 'telemetry_class_distribution.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'telemetry_class_distribution.png'), bbox_inches='tight')
     plt.close()
     
     print(f"\nTarget: Device Health Status (0=unhealthy, 1=healthy)")
@@ -1475,7 +1526,7 @@ if __name__ == "__main__":
         print("\n💡 TIP: You can enter a file path directly instead of choosing a number!")
         print("Examples:")
         print("- Enter '7' then provide path, OR")
-        print("- Enter path directly: C:/Users/ayush/Desktop/daikibo-telemetry-data.json")
+        print("- Enter path directly: ./my_data/telemetry_data.json")
         print("- Enter path directly: ./data/my_dataset.csv")
         print("\nSupported file types:")
         print("- .json files → Telemetry dataset")
@@ -1595,14 +1646,13 @@ if __name__ == "__main__":
             top_feature_names = [feature_names[i] for i in top_indices]
             print(f"Top 10 features for neurons: {top_feature_names}")
             # --- Visualize feature importances ---
-            desktop_dir = r'C:/Users/ayush/Desktop'
-            os.makedirs(desktop_dir, exist_ok=True)
+            output_dir = get_output_directory()
             plt.figure(figsize=(8,6))
             plt.barh(np.array(top_feature_names)[::-1], importances[top_indices][::-1])
             plt.xlabel('Importance')
             plt.title('Top 10 Feature Importances (Binary RandomForest)')
             plt.tight_layout()
-            plt.savefig(os.path.join(desktop_dir, 'binary_feature_importances.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'binary_feature_importances.png'), bbox_inches='tight')
             plt.close()
             # Split data
             from sklearn.model_selection import train_test_split
@@ -1648,7 +1698,7 @@ if __name__ == "__main__":
             plt.title('Binary Classification Confusion Matrix')
             plt.ylabel('True Label')
             plt.xlabel('Predicted Label')
-            plt.savefig(os.path.join(desktop_dir, 'binary_confusion_matrix.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'binary_confusion_matrix.png'), bbox_inches='tight')
             plt.close()
             print(f"Binary confusion matrix saved to: binary_confusion_matrix.png")
             
@@ -1683,8 +1733,7 @@ if __name__ == "__main__":
             importances = rf.feature_importances_
             
             # --- Enhanced visualizations for multi-class ---
-            desktop_dir = r'C:/Users/ayush/Desktop'
-            os.makedirs(desktop_dir, exist_ok=True)
+            output_dir = get_output_directory()
             
             # Feature importance plot
             plt.figure(figsize=(10, 6))
@@ -1694,7 +1743,7 @@ if __name__ == "__main__":
             plt.title('Multi-Class Feature Importances (RandomForest)')
             plt.gca().invert_yaxis()
             plt.tight_layout()
-            plt.savefig(os.path.join(desktop_dir, 'multiclass_feature_importances.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'multiclass_feature_importances.png'), bbox_inches='tight')
             plt.close()
             
             # Class distribution visualization
@@ -1702,7 +1751,7 @@ if __name__ == "__main__":
             plt.figure(figsize=(8, 6))
             plt.pie(counts, labels=[f'Class {i}' for i in unique], autopct='%1.1f%%', startangle=90)
             plt.title('Multi-Class Dataset Distribution')
-            plt.savefig(os.path.join(desktop_dir, 'multiclass_distribution.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'multiclass_distribution.png'), bbox_inches='tight')
             plt.close()
             
             # Split data with enhanced error handling
@@ -1860,7 +1909,7 @@ if __name__ == "__main__":
             plt.title(f'Multi-Class Confusion Matrix ({n_classes} classes)')
             plt.ylabel('True Label')
             plt.xlabel('Predicted Label')
-            plt.savefig(os.path.join(desktop_dir, 'multiclass_confusion_matrix.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'multiclass_confusion_matrix.png'), bbox_inches='tight')
             plt.close()
             
             # Prediction vs Actual comparison
@@ -1891,7 +1940,7 @@ if __name__ == "__main__":
             plt.legend()
             
             plt.tight_layout()
-            plt.savefig(os.path.join(desktop_dir, 'multiclass_prediction_analysis.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'multiclass_prediction_analysis.png'), bbox_inches='tight')
             plt.close()
             
             print(f"\nMulti-class visualizations saved:")
@@ -1992,8 +2041,7 @@ if __name__ == "__main__":
             print(f"LinearRegression - MSE: {lr_mse:.4f}, R²: {lr_r2:.4f}")
             
             # Create visualization
-            desktop_dir = r'C:/Users/ayush/Desktop'
-            os.makedirs(desktop_dir, exist_ok=True)
+            output_dir = get_output_directory()
             
             plt.figure(figsize=(12, 4))
             
@@ -2024,7 +2072,7 @@ if __name__ == "__main__":
             plt.ylim(0, 1)
             
             plt.tight_layout()
-            plt.savefig(os.path.join(desktop_dir, 'regression_neural_network_results.png'), bbox_inches='tight')
+            plt.savefig(os.path.join(output_dir, 'regression_neural_network_results.png'), bbox_inches='tight')
             plt.close()
             
             print(f"\nRegression neural network results saved to: regression_neural_network_results.png")
