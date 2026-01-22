@@ -379,6 +379,99 @@ class EvoNeuron:
             best['bias'] = b_prop
 
 
+    def evolve_rl(
+        self,
+        fitness_scores: List[float],
+        mutation_strength: float,
+        V_m: Optional[List[Dict[str, Any]]] = None
+    ) -> None:
+        """
+        Evolve population based on external fitness scores (e.g. RL rewards).
+        
+        Args:
+            fitness_scores: List of fitness values (higher is better) corresponding to population
+            mutation_strength: Mutation rate
+            V_m: Optional significant mutation vector
+        """
+        self._check_population_shapes()
+        
+        # Convert fitness to 'error' (lower is better) for compatibility with existing selection logic
+        # We invert fitness: max_fitness becomes 0 error
+        fitness = np.array(fitness_scores)
+        max_fit = np.max(fitness)
+        # Avoid division by zero or weird scaling, just negate if straightforward
+        # But tournament selection just needs relative order.
+        # Our tournament_selection minimizes error. So we pass -fitness as error.
+        errors = -fitness 
+        
+        # Track elite (Best fitness)
+        best_idx = np.argmax(fitness)
+        current_best_score = fitness[best_idx]
+        
+        # In RL, elite_error is actually elite_score (maximize). 
+        # But self.elite_error is initialized to inf (minimization).
+        # We'll stick to local elite tracking for this generation to avoid confusion with supervised logic.
+        
+        # Tournament selection
+        # We reuse the logic but adapt it for maximization or just use the indices
+        sorted_idx = np.argsort(errors) # low error = high fitness = first
+        
+        num_survivors = max(ELITE_COUNT, 3)
+        survivors = [
+            {'weights': self.population[i]['weights'].copy(), 'bias': self.population[i]['bias']}
+            for i in sorted_idx[:num_survivors]
+        ]
+        
+        # Create new population
+        new_pop = survivors.copy()
+        
+        while len(new_pop) < self.pop_size:
+            # Tournament
+            tournament = np.random.choice(len(self.population), size=min(TOURNAMENT_SIZE, len(self.population)), replace=False)
+            # Find winner (max fitness)
+            winner_idx = tournament[np.argmax(fitness[tournament])]
+            parent1 = self.population[winner_idx]
+            
+            tournament2 = np.random.choice(len(self.population), size=min(TOURNAMENT_SIZE, len(self.population)), replace=False)
+            winner_idx2 = tournament2[np.argmax(fitness[tournament2])]
+            parent2 = self.population[winner_idx2]
+            
+            # Crossover (SBX)
+            if random.random() < CROSSOVER_PROB:
+                 u = np.random.random(self.input_dim)
+                 beta = np.where(
+                    u <= 0.5,
+                    (2 * u) ** (1 / (ETA_CROSSOVER + 1)),
+                    (1 / (2 * (1 - u + 1e-10))) ** (1 / (ETA_CROSSOVER + 1))
+                 )
+                 child_w = 0.5 * ((1 + beta) * parent1['weights'] + (1 - beta) * parent2['weights'])
+                 child_b = 0.5 * (parent1['bias'] + parent2['bias'])
+            else:
+                child_w = parent1['weights'].copy()
+                child_b = parent1['bias']
+            
+            # Mutation
+            mutation_mask = np.random.random(self.input_dim) < mutation_strength
+            u = np.random.random(self.input_dim)
+            delta = np.where(
+                u < 0.5,
+                (2 * u) ** (1 / (ETA_MUTATION + 1)) - 1,
+                1 - (2 * (1 - u)) ** (1 / (ETA_MUTATION + 1))
+            )
+            child_w[mutation_mask] += delta[mutation_mask] * mutation_strength
+            
+            if random.random() < mutation_strength:
+                u_b = random.random()
+                delta_b = ((2 * u_b) ** (1 / (ETA_MUTATION + 1)) - 1) if u_b < 0.5 else (1 - (2 * (1 - u_b)) ** (1 / (ETA_MUTATION + 1)))
+                child_b += delta_b * mutation_strength
+                
+            new_pop.append({
+                'weights': child_w.astype(np.float32),
+                'bias': np.float32(child_b)
+            })
+            
+        self.population = new_pop[:self.pop_size]
+
 class OutputNeuron(EvoNeuron):
     """Output neuron with linear activation (for classification logits)."""
     
