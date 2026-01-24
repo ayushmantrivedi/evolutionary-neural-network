@@ -1,5 +1,5 @@
 MULTI-TASK CONTINUAL LEARNING RESULTS
 ======================================
-Performance WITHOUT Memory: Mean=-162.3, Best=10.3
-Performance WITH Memory:    Mean=-160.0, Best=125.2
+Performance WITHOUT Memory: Mean=-123.8, Best=280.3
+Performance WITH Memory:    Mean=-95.6, Best=268.0
 ======================================

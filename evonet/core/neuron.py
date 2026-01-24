@@ -464,7 +464,14 @@ class EvoNeuron:
                 u_b = random.random()
                 delta_b = ((2 * u_b) ** (1 / (ETA_MUTATION + 1)) - 1) if u_b < 0.5 else (1 - (2 * (1 - u_b)) ** (1 / (ETA_MUTATION + 1)))
                 child_b += delta_b * mutation_strength
-                
+            
+            # V_m influence (memory-guided evolution) - ADDED FOR CINEMATIC FINE-TUNING
+            if V_m and len(V_m) > 0 and random.random() < VM_INFLUENCE_PROB:
+                v = random.choice(V_m)
+                if v['weights'].shape == (self.input_dim,):
+                    child_w += v['weights'] * 0.3
+                child_b += v['bias'] * 0.3
+
             new_pop.append({
                 'weights': child_w.astype(np.float32),
                 'bias': np.float32(child_b)
