@@ -10,163 +10,235 @@ from train_memory_autopilot import MemoryEvoPilot, run_episode
 
 # Configure
 TICKER = "BTC-USD"
-WINDOW_SIZE = 10
-POP_SIZE = 20
+WINDOW_SIZE = 20 # Increased context for Alpha Signals
+POP_SIZE = 30    # Larger population for harder problem
 GENS = 50
+
+# --- DOMAIN EXPERT METRICS ---
+def calculate_downside_deviation(returns, target_return=0.0):
+    downside_returns = returns[returns < target_return]
+    if len(downside_returns) == 0:
+        return 1e-6
+    return np.std(downside_returns) + 1e-6
+
+def calculate_sortino(returns, target_return=0.0):
+    avg_return = np.mean(returns)
+    down_dev = calculate_downside_deviation(returns, target_return)
+    return avg_return / down_dev
+
+def calculate_max_drawdown(equity_curve):
+    peak = equity_curve[0]
+    max_dd = 0.0
+    for value in equity_curve:
+        if value > peak:
+            peak = value
+        dd = (peak - value) / peak
+        if dd > max_dd:
+            max_dd = dd
+    return max_dd
+
+def run_pro_episode(env, pilot, pilot_index):
+    """
+    Runs an episode collecting Professional Metrics (Equity, Drawdown).
+    """
+    state, _ = env.reset()
+    total_reward = 0
+    terminated = False
+    truncated = False
+    
+    equity = 1.0 # Starting Equity Unit
+    equity_curve = [equity]
+    returns_log = []
+    
+    steps = 0
+    # Increase steps to see long-term stability
+    while not (terminated or truncated) and steps < 400:
+        action = pilot.get_action(state, pilot_index)
+        state, r, terminated, truncated, _ = env.step(action)
+        
+        # 'r' here is log-return adjusted by fee
+        # Update Equity: Equity_t = Equity_{t-1} * exp(r)
+        equity = equity * np.exp(r)
+        equity_curve.append(equity)
+        returns_log.append(r)
+        
+        total_reward += r
+        steps += 1
+        
+    returns_log = np.array(returns_log)
+    
+    # --- RISK ADJUSTED FITNESS ---
+    # Fitness = Returns * log(1 + Sortino) - Penalty * MaxDD
+    
+    # 1. Sortino
+    if np.std(returns_log) < 1e-9: # No volatility (Sat in cash)
+        sortino = 0.0
+    else:
+        sortino = calculate_sortino(returns_log)
+        
+    # 2. Max Drawdown
+    mdd = calculate_max_drawdown(equity_curve)
+    
+    # 3. Activity Constraint (Don't just sit in cash)
+    n_trades = env._current_tick if hasattr(env, '_current_tick') else steps # Approx
+    
+    # Heuristic Fitness
+    # Sortino > 0.05 per step is godlike. 
+    # Use simpler Annualized-ish logic
+    
+    # Total Return %
+    total_ret_pct = (equity - 1.0) * 100
+    
+    # Fitness Score: Reward Stability & Safety
+    # Base: Total Return
+    # Multiplier: Sortino (Reward efficiency)
+    # Penalty: Drawdown^2 (Severe penalty for crashing)
+    
+    fitness = total_ret_pct * (1.0 + sortino) - (mdd * 100 * 2.0)
+    
+    # Sanity check: If lost money, fitness should be bad
+    if total_ret_pct < 0:
+        fitness = total_ret_pct * (1.0 + mdd) # Compounding penalty on loss
+        
+    return fitness, total_ret_pct, sortino, mdd, equity_curve
 
 def make_env(df):
     """Creates the Financial Environment from a DataFrame slice."""
-    return FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, len(df)), window_size=WINDOW_SIZE)
+    # Pass Friction Params here
+    return FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, len(df)), window_size=WINDOW_SIZE, fee=0.001)
 
 def train_specialist(regime_name, df_slice):
-    print(f"\n🪙 TRAINING SPECIALIST: {regime_name.upper()}")
+    print(f"\n🪙 TRAINING EXPERT: {regime_name.upper()}")
     env = make_env(df_slice)
     
-    # Needs a new pilot for each specialist training (or continue from base)
-    # We start fresh to prove specialization
     pilot = MemoryEvoPilot()
-    # Override input dim: Window * 6 features
-    pilot.input_dim = WINDOW_SIZE * 6 
-    # Override output dim: 2 (Buy/Sell) - wait, anytrading uses Discrete(2)
-    pilot.output_dim = 2
-    # Reinit network with correct dims
+    # Override input dim: Window * 7 features (Added ADX, etc)
+    pilot.input_dim = WINDOW_SIZE * 7
+    # Override output dim: 3 (Short, Neutral, Long)
+    pilot.output_dim = 3
+    
+    # Reinit network
     from evonet.core.network import MultiClassEvoNet
     pilot.net = MultiClassEvoNet(pilot.input_dim, pilot.output_dim)
-    pilot.flat_init = pilot.get_flat_weights(0) # Re-init flat helper
+    pilot.flat_init = pilot.get_flat_weights(0)
     pilot.memory.theta_init = pilot.flat_init
     
-    # --- DEBUG: Run Baseline (Always Buy) ---
-    print("   🔎 DEBUG: Running 'Always Buy' Baseline...")
-    base_env = make_env(df_slice)
-    s, _ = base_env.reset()
-    base_r = 0
-    t = False
-    trunc = False
-    ticks = 0
-    while not (t or trunc) and ticks < 200:
-        s, r, t, trunc, _ = base_env.step(1) # Force Buy
-        base_r += r
-        ticks += 1
-    print(f"   🔎 Baseline Reward (200 ticks): {base_r:.2f}")
-    base_env.close()
-    # ----------------------------------------
+    # --- DEBUG: Run Baseline (Buy & Hold) ---
+    print("   🔎 DEBUG: Running 'Buy & Hold' Baseline...")
+    bh_env = make_env(df_slice)
+    s, _ = bh_env.reset()
+    bh_equity = 1.0
+    steps = 0
+    while steps < 400:
+        s, r, t, tr, _ = bh_env.step(2) # 2 = Long
+        bh_equity *= np.exp(r)
+        steps += 1
+        if t or tr: break
+    print(f"   🔎 Buy/Hold Final Equity: {bh_equity:.4f} ({ (bh_equity-1)*100:.2f}%)")
+    bh_env.close()
+    
+    best_fitness_global = -float('inf')
     
     for gen in range(1, GENS + 1):
-        rewards = []
-        actions_log = []
+        fitness_scores = []
+        stats_log = [] # (Ret, Sortino, MDD)
         
         for i in range(pilot.pop_size):
-            # Run episode
-            state, _ = env.reset()
-            total_r = 0
-            terminated = False
-            truncated = False
+            fit, ret, sort, mdd, eq = run_pro_episode(env, pilot, i)
+            fitness_scores.append(fit)
+            stats_log.append((ret, sort, mdd))
             
-            # Limited steps for faster debugging
-            steps = 0
-            while not (terminated or truncated) and steps < 200:
-                action = pilot.get_action(state, i)
-                actions_log.append(action)
-                state, r, terminated, truncated, _ = env.step(action)
-                total_r += r
-                steps += 1
-            rewards.append(total_r)
-            
-        best = np.max(rewards)
-        pilot.update_hall_of_fame(rewards)
-        pilot.evolve(rewards)
+        best_idx = np.argmax(fitness_scores)
+        best_fit = fitness_scores[best_idx]
+        best_stat = stats_log[best_idx]
+        
+        if best_fit > best_fitness_global:
+            best_fitness_global = best_fit
+        
+        pilot.update_hall_of_fame(fitness_scores)
+        pilot.evolve(fitness_scores)
         
         if gen % 5 == 0:
-            # Stats
-            n_long = sum(actions_log)
-            pct_long = (n_long / len(actions_log)) * 100 if len(actions_log) > 0 else 0
-            print(f"   Gen {gen}: Reward={best:.2f} | Action Dist: {pct_long:.1f}% BUY | Best Pilot Bias: {pilot.net.level3[0].population[0]['bias']:.4f}")
-            if pct_long < 5.0:
-                 print("   ⚠️  WARNING: STUCK IN 'SELL/SHORT' MODE (Safety convergence). Needs bias shift.")
+            print(f"   Gen {gen}: Best Fitness={best_fit:.2f} | Ret: {best_stat[0]:.1f}% | Sortino: {best_stat[1]:.2f} | MaxDD: {best_stat[2]*100:.1f}%")
             
-    # Store the specialist skill
-    best_idx = np.argmax(rewards)
+    # Store skill
     pilot.store_memory(regime_name, best_idx)
     env.close()
     
-    # Return the memory vector (delta) or the pilot itself?
-    # We return the pilot, which now has the memory stored in its internal dict
     return pilot
 
-def run_simulation(start_year="2020", end_year="2023"):
-    print("🚀 LAUNCHING EVOTRADER SIMULATION")
+def run_simulation():
+    print("🚀 LAUNCHING HEDGE FUND SIMULATION (3-CYCLE MASTERY)")
     
     # 1. Load Data
     fetcher = DataFetcher(TICKER)
     df = fetcher.fetch_data()
-    df = fetcher.add_indicators()
+    # Use NEW Alpha features
+    df = fetcher.add_advanced_features()
     
     # 2. Split Regimes
-    # We assume we know these dates (In real world, we'd detect them)
     bull_df = fetcher.split_by_regime("bull_2020")
     bear_df = fetcher.split_by_regime("bear_2022")
+    chop_df = fetcher.split_by_regime("chop_2023")
     
-    # 3. Train Specialists
-    # Train Bull Pilot
+    # 3. Train Experts Independently (To avoid Bias)
+    
+    # --- A. BULL EXPERT (Momentum) ---
     bull_pilot = train_specialist("bull", bull_df)
     
-    # Train Bear Pilot
-    # Note: We can reuse the same pilot instance to accumulate memories, 
-    # but for clarity we'll assume we extract the vectors.
-    # Ideally, we have ONE pilot that learns both.
-    # Let's use ONE pilot.
+    # --- B. BEAR EXPERT (Short Seller) ---
+    # We do NOT fine-tune from Bull. We start fresh to learn "Shorting" natively.
+    bear_pilot = train_specialist("bear", bear_df)
     
-    print("\n🧠 CONSOLIDATING MEMORIES...")
-    master_pilot = bull_pilot # Has 'bull' memory
+    # --- C. NEUTRAL EXPERT (Sniper/Cash) ---
+    # Training using 2023 Chop data
+    chop_pilot = train_specialist("chop", chop_df)
     
-    # Train Bear on the SAME pilot? 
-    # If we do that, it forgets Bull. That's the point!
-    # But we want to store the delta.
+    print("\n✅ TRAINING COMPLETE. 3 Experts Created.")
+    print(f"   Bull Memory: {bull_pilot.stored_tasks}")
+    print(f"   Bear Memory: {bear_pilot.stored_tasks}")
+    print(f"   Chop Memory: {chop_pilot.stored_tasks}")
     
-    # Reset weights to init (Tabula Rasa) or keep Bull weights?
-    # To demonstrate "Switching", we should start from base for Bear training too,
-    # OR fine-tune.
-    # Let's fine-tune from Bull to Bear, then store Bear.
-    # Then we recall Bull later to prove we didn't lose it.
+    # 4. Consolidate into Master Brain (The EvoTrader)
+    print("\n🧠 CONSOLIDATING INTO MASTER BRAIN...")
+    master_pilot = MemoryEvoPilot()
+    master_pilot.input_dim = WINDOW_SIZE * 7
+    master_pilot.output_dim = 3
+    from evonet.core.network import MultiClassEvoNet
+    master_pilot.net = MultiClassEvoNet(master_pilot.input_dim, master_pilot.output_dim)
     
-    print("   -> Switching to Bear Market Training (Fine-Tuning)...")
-    bear_env = make_env(bear_df)
+    # CRITICAL FIX: Re-initialize memory structure to match new network size
+    master_pilot.flat_init = master_pilot.get_flat_weights(0)
+    from evonet.core.memory import DirectionalMemory
+    master_pilot.memory = DirectionalMemory(master_pilot.flat_init)
     
-    for gen in range(1, GENS + 1):
-        rewards = []
-        for i in range(master_pilot.pop_size):
-            rewards.append(run_episode(bear_env, master_pilot, i))
-        master_pilot.update_hall_of_fame(rewards)
-        master_pilot.evolve(rewards)
-        if gen % 10 == 0: print(f"   Gen {gen}: Best Bear Profit = {np.max(rewards):.2f}")
+    # Inject Memories
+    # We transfer the learned vectors from the specialists to the master's memory
+    # In a real app, we'd save these to disk. Here we just copy.
+    
+    # Transfer Bull
+    # Note: accessing internal 'memory' object directly for demo
+    if "bull" in bull_pilot.memory.task_directions:
+        master_pilot.memory.store_task("bull", bull_pilot.memory.task_directions["bull"] + master_pilot.memory.theta_init)
+    if "bear" in bear_pilot.memory.task_directions:
+        master_pilot.memory.store_task("bear", bear_pilot.memory.task_directions["bear"] + master_pilot.memory.theta_init)
+    if "chop" in chop_pilot.memory.task_directions:
+        master_pilot.memory.store_task("chop", chop_pilot.memory.task_directions["chop"] + master_pilot.memory.theta_init)
         
-    master_pilot.store_memory("bear", np.argmax(rewards))
-    bear_env.close()
+    master_pilot.stored_tasks = {"bull", "bear", "chop"}
     
-    print("\n✅ TRAINING COMPLETE. Memories Stored: ", master_pilot.stored_tasks)
+    print("🎉 EvoTrader 'Full Cycle' Expert Ready.")
     
-    # 4. The Meta-Controller Test
-    # Simulate a transition: Bull -> Bear -> Bull
-    print("\n📉 SIMULATING REGIME SWITCH (Bull -> Bear)")
+    # 5. Save the Brain
+    import pickle
+    brain_path = "evotrader_brain.pkl"
+    with open(brain_path, "wb") as f:
+        pickle.dump(master_pilot, f)
+    print(f"💾 BRAIN SAVED: {brain_path}")
+    print("   -> Contains: Weights, Memory Vectors (Bull/Bear/Chop)")
     
-    # A. Run in Bull Mode (Recall Bull)
-    master_pilot.recover_memory("bull")
-    test_env_bull = make_env(bull_df.iloc[:500]) # Test on subset
-    r_bull = run_episode(test_env_bull, master_pilot, 0)
-    print(f"   Score in Bull Market (Using Bull Memory): {r_bull:.2f}")
-    
-    # B. Run in Bear Mode (Using Bull Memory) -> EXPECT FAILURE
-    test_env_bear = make_env(bear_df.iloc[:500])
-    r_fail = run_episode(test_env_bear, master_pilot, 0)
-    print(f"   Score in Bear Market (Using Bull Memory): {r_fail:.2f} (Expected Low)")
-    
-    # C. Real-time Switch
-    print("   🚨 REGIME CHANGE DETECTED! Swapping to 'Bear' Memory...")
-    master_pilot.recover_memory("bear")
-    r_bear = run_episode(test_env_bear, master_pilot, 0)
-    print(f"   Score in Bear Market (Using Bear Memory): {r_bear:.2f} (Expected High)")
-    
-    print("\n🎉 EvoTrader Proof-of-Concept Successful!")
+    # 6. Recommendation
+    print("\nNext Step: Run 'python run_backtest.py' to see it trade 2020-2023!")
 
 if __name__ == "__main__":
     run_simulation()

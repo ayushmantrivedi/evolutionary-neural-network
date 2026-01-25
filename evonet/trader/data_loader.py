@@ -11,24 +11,49 @@ class DataFetcher:
     Fetches and processes financial data for EvoTrader.
     Splits data into regimes (Bull/Bear) for specialist training.
     """
-    def __init__(self, ticker="BTC-USD", start_date="2020-01-01", end_date="2023-12-31"):
+    def __init__(self, ticker="BTC-USD", start_date="2020-01-01", end_date="2023-12-31", interval="1d"):
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
+        self.interval = interval
         self.df = None
+        self.cache_dir = "data_cache"
+        os.makedirs(self.cache_dir, exist_ok=True)
         
     def fetch_data(self):
-        print(f"📉 Fetching {self.ticker} data from {self.start_date} to {self.end_date}...")
-        self.df = yf.download(self.ticker, start=self.start_date, end=self.end_date)
+        # Cache Filename: ticker_interval_start_end.csv
+        safe_start = self.start_date.replace(":", "").replace("-", "")
+        safe_end = self.end_date.replace(":", "").replace("-", "")
+        cache_file = os.path.join(self.cache_dir, f"{self.ticker}_{self.interval}_{safe_start}_{safe_end}.csv")
+        
+        if os.path.exists(cache_file):
+            print(f"⚡ Loading cached data from {cache_file}...")
+            self.df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+            print(f"   -> Loaded {len(self.df)} rows.")
+            return self.df
+            
+        print(f"📉 Fetching {self.ticker} [{self.interval}] from {self.start_date} to {self.end_date}...")
+        
+        # YFinance Limitation: 1h data only available for last 730 days.
+        # If interval is 1h and date range > 730 days, warn user.
+        if self.interval == "1h":
+             print("⚠️ WARNING: Public API (yfinance) limits 1h data to last 730 days.")
+             
+        self.df = yf.download(self.ticker, start=self.start_date, end=self.end_date, interval=self.interval)
         
         if self.df.empty:
-            raise ValueError("No data fetched! Check internet connection or ticker symbol.")
+            raise ValueError("No data fetched! Check internet/ticker or yfinance 730-day limit for 1h data.")
             
-        print(f"   -> Fetched {len(self.df)} rows.")
+        # Clean multi-index if present (yfinance update)
+        if isinstance(self.df.columns, pd.MultiIndex):
+            self.df.columns = self.df.columns.get_level_values(0)
+            
+        print(f"   -> Fetched {len(self.df)} rows. Caching...")
+        self.df.to_csv(cache_file)
         return self.df
         
     def add_advanced_features(self):
-        """Adds professional financial features (Log-Returns, Volatility, Volume)."""
+        """Adds professional financial features (Alpha Signals)."""
         if self.df is None:
             self.fetch_data()
             
@@ -36,26 +61,51 @@ class DataFetcher:
         if isinstance(self.df.columns, pd.MultiIndex):
             self.df.columns = self.df.columns.get_level_values(0)
             
-        # 1. Log Returns (Stationary Price Movement)
+        # --- 1. BASE LOG RETURNS ---
         # ln(P_t / P_{t-1})
         self.df['Log_Ret'] = np.log(self.df['Close'] / self.df['Close'].shift(1))
         
-        # 2. Realized Volatility (Risk Signal)
-        # Rolling Std Dev of Log Returns (20 days)
-        self.df['Volatility'] = self.df['Log_Ret'].rolling(window=20).std()
+        # --- 1.5 REGIME FILTERS (SMAs) ---
+        self.df['SMA_50'] = ta.sma(self.df['Close'], length=50)
+        self.df['SMA_200'] = ta.sma(self.df['Close'], length=200)
         
-        # 3. Volume Oscillator (Activity)
-        # (Vol - AvgVol) / AvgVol
-        avg_vol = self.df['Volume'].rolling(window=20).mean()
-        self.df['Vol_Osc'] = (self.df['Volume'] - avg_vol) / (avg_vol + 1e-8)
+        # --- 2. TREND FILTER (ADX) ---
+        # ADX > 25 = Trending, ADX < 20 = Chopping
+        adx_df = ta.adx(self.df['High'], self.df['Low'], self.df['Close'], length=14)
+        self.df['ADX'] = adx_df['ADX_14'] / 100.0  # Normalize 0-1
         
-        # 4. RSI (Momentum) - Keep this, it's good
-        self.df['RSI'] = ta.rsi(self.df['Close'], length=14) / 100.0 # Normalize 0-1
+        # --- 3. MOMENTUM (MACD) ---
+        # MACD Histogram captures acceleration
+        macd_df = ta.macd(self.df['Close'])
+        # Normalize MACD Histogram roughly (-1 to 1 for crypto) - using hyperbolic tangent to bound
+        self.df['MACD_Hist'] = np.tanh(macd_df['MACDh_12_26_9']) 
         
-        # 5. Price Trend (Distance from SMA50)
-        # (Price - SMA50) / SMA50 -> Normalized trend strength
-        sma50 = ta.sma(self.df['Close'], length=50)
-        self.df['Trend_50'] = (self.df['Close'] - sma50) / (sma50 + 1e-8)
+        # --- 4. MEAN REVERSION (Bollinger Bands %B) ---
+        # %B > 1 (Overbought), %B < 0 (Oversold)
+        try:
+            bb_df = ta.bbands(self.df['Close'], length=20, std=2)
+            # Auto-detect the %B column (it usually ends with P or BBP)
+            bb_cols = bb_df.columns.tolist()
+            bbp_col = next((c for c in bb_cols if c.startswith('BBP')), None)
+            if bbp_col:
+                 self.df['BB_Pct'] = bb_df[bbp_col]
+            else:
+                 print(f"Warning: Could not find BBP column in {bb_cols}. Using fallback.")
+                 self.df['BB_Pct'] = 0.5 
+        except Exception as e:
+            print(f"Error computing BB: {e}")
+            self.df['BB_Pct'] = 0.5
+        
+        # --- 5. SMART MONEY FLOW (On-Balance Volume Slope) ---
+        # Is volume supporting the price?
+        obv = ta.obv(self.df['Close'], self.df['Volume'])
+        self.df['OBV_Slope'] = obv.pct_change(5).fillna(0) * 100 # 5-day slope scaled
+        
+        # --- 6. VOLATILITY NORMALIZER (ATR %) ---
+        # Critical for sizing positions across different years
+        atr = ta.atr(self.df['High'], self.df['Low'], self.df['Close'], length=14)
+        self.df['ATR_Pct'] = atr / self.df['Close']
+        self.df['ATR'] = atr # Keep raw ATR for slippage model
         
         # Clean NaNs (Rolling windows create NaNs at start)
         self.df.dropna(inplace=True)
@@ -63,7 +113,8 @@ class DataFetcher:
         # Fill strict infinite values if any
         self.df.replace([np.inf, -np.inf], 0.0, inplace=True)
         
-        print(f"   -> Advanced Features Added: {len(self.df)} rows ready.")
+        print(f"   -> Advanced Alpha Features Added: {len(self.df)} rows ready.")
+        print("      [ADX, MACD, BB%, OBV, ATR]")
         return self.df
         
     def add_indicators(self):
