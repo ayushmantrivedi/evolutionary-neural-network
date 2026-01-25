@@ -24,7 +24,8 @@ def set_seed(seed):
     random.seed(seed)
 
 def make_env_h1(df):
-    return FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, len(df)), window_size=WINDOW_SIZE, fee=0.001)
+    # FEE UPGRADE: 0.1% -> 0.2% (Simulates real spread + slippage + fee)
+    return FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, len(df)), window_size=WINDOW_SIZE, fee=0.002)
 
 def train_specialist(name, df_subset):
     print(f"\n🪙 TRAINING H1 SPECIALIST: {name.upper()} ({len(df_subset)} hours)")
@@ -87,20 +88,39 @@ def run_h1_eval(env, pilot, pilot_idx):
     total_reward = 0
     steps = 0
     
-    # Limit steps per episode to prevent infinite loops in broken agents
-    max_steps = 500 
+    # TIMEFRAME UPGRADE: 500 -> 1000 Hours (~1.5 Months)
+    max_steps = 1000 
     
     equity = 1.0
+    equity_curve = [1.0]
     
     while not (terminated or truncated) and steps < max_steps:
         action = pilot.get_action(state, pilot_idx)
         state, r, terminated, truncated, _ = env.step(action)
         total_reward += r
         equity *= np.exp(r)
+        equity_curve.append(equity)
         steps += 1
         
-    # Simple Fitness: Equity Return
-    fitness = (equity - 1.0) * 100
+    # --- RISK AWARE METRIC (Calmar Ratio Proxy) ---
+    peak = np.maximum.accumulate(equity_curve)
+    drawdowns = (peak - equity_curve) / peak
+    max_dd = np.max(drawdowns) if len(drawdowns) > 0 else 0.0
+    
+    # Fitness: Return / (MaxDD + epsilon)
+    # We penalize DD heavily.
+    # If 20% return with 5% DD => 20 / 0.05 = 400 Score
+    # If 20% return with 20% DD => 20 / 0.20 = 100 Score
+    
+    net_return_pct = (equity - 1.0) * 100
+    
+    # Safety clamp for negative return
+    if net_return_pct < 0:
+        fitness = net_return_pct # Just return the loss directly
+    else:
+        # Boost score if DD is low
+        risk_penalty = max_dd + 0.01 # Avoid div by zero
+        fitness = net_return_pct / risk_penalty 
     
     # Penalize inactivity
     if steps < 10: fitness = -100
