@@ -55,6 +55,14 @@ all = [
     "numba>=0.56.0",
     "torch>=2.0.0",
 ]
+pro = [
+    "yfinance>=0.2.0",
+    "pandas-ta>=0.3.14b",
+    "ccxt>=4.0.0",
+    "alpaca-trade-api>=3.0.0",
+    "fastapi>=0.95.0",
+    "uvicorn>=0.21.0",
+]
 
 [project.scripts]
 evonet = "evonet.__main__:main"

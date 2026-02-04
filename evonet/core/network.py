@@ -13,7 +13,7 @@ import logging
 from typing import Tuple, Optional, List, Dict, Any
 
 from evonet.config import (
-    LEVEL1_NEURONS, LEVEL2_NEURONS, TAU1, TAU2, 
+    LEVEL1_NEURONS, LEVEL2_NEURONS, POP_SIZE, TAU1, TAU2, 
     MUT_STRENGTH_BASE, MIN_MUT_STRENGTH, EPOCHS, 
     PRINT_INTERVAL, THOUGHT_INTERVAL, USE_SKIP_CONNECTIONS,
     USE_GPU
@@ -22,6 +22,7 @@ from evonet.core.neuron import EvoNeuron, OutputNeuron, RegressionOutputNeuron
 from evonet.core.mutations import SignificantMutationVector
 from evonet.core.losses import mse_loss, ce_loss, ce_loss_with_confidence, softmax
 from evonet.core.gpu_backend import get_device, is_gpu_available, GPUTensorWrapper
+from evonet.core.layers import EvoAttentionLayer, ConfidenceHead
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -71,9 +72,15 @@ class MultiClassEvoNet:
             OutputNeuron(LEVEL2_NEURONS + (LEVEL1_NEURONS if USE_SKIP_CONNECTIONS else 0)) for _ in range(num_classes)
         ]
         self.num_classes = num_classes
+        
+        # --- NEW PRO FEATURES ---
+        self.attention = EvoAttentionLayer(input_dim)
+        self.confidence_head = ConfidenceHead(LEVEL2_NEURONS)
+        
         self.V_m = SignificantMutationVector()
         self.tau1 = TAU1
         self.tau2 = TAU2
+        self.pop_size = POP_SIZE
         self.mut_strength_base = MUT_STRENGTH_BASE
         self.global_error: float = 1.0
         self.device = get_device(use_gpu=USE_GPU)
@@ -94,7 +101,7 @@ class MultiClassEvoNet:
         x: np.ndarray,
         y_true: np.ndarray,
         train: bool = True
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
         """
         Forward pass through the network with GPU acceleration updates.
         
@@ -106,11 +113,8 @@ class MultiClassEvoNet:
         mut_strength = self.get_mutation_strength()
         vm_list = self.V_m.get()
         
-        # Convert inputs to appropriate device if using GPU
-        if USE_GPU and is_gpu_available():
-            # Keep as numpy for individual neuron forward methods which handle conversion internally
-            # but prepare for future full-batch operations
-            pass
+        # --- NEW: Apply Attention ---
+        x = self.attention.forward(x, train=train)
 
         # Layer 1
         l1_outputs = []
@@ -186,20 +190,50 @@ class MultiClassEvoNet:
         l3_outputs = np.array(l3_outputs)
         y_pred = softmax(l3_outputs)
         
-        # Evolve output neurons during training
-        if train:
-            for i, neuron in enumerate(self.level3):
-                neuron.evolve(
-                    l3_input_vector,
-                    y_true[i],
-                    mse_loss,
-                    mut_strength,
-                    vm_list,
-                    tau=self.tau2
-                )
+        # Calculate confidence based on hidden layer representation
+        confidence = self.confidence_head.get_confidence(l3_input_vector[:LEVEL2_NEURONS])
         
-        return y_pred, l1_errors, l2_errors, l3_outputs
+        return y_pred, l1_errors, l2_errors, l3_outputs, confidence
     
+    def predict(self, x: np.ndarray, pilot_index: int) -> Tuple[np.ndarray, float]:
+        """
+        Fast prediction for a specific individual in the population.
+        Used for RL episodes.
+        """
+        # Apply Attention from the best individual
+        x = self.attention.forward(x, train=False)
+        
+        # Layer 1
+        l1_outs = []
+        for neuron in self.level1:
+            ind = neuron.population[pilot_index]
+            l1_outs.append(np.maximum(0, np.dot(x, ind['weights']) + ind['bias']))
+        l1_outs = np.array(l1_outs)
+        
+        # Layer 2
+        l2_outs = []
+        for neuron in self.level2:
+            ind = neuron.population[pilot_index]
+            l2_outs.append(np.maximum(0, np.dot(l1_outs, ind['weights']) + ind['bias']))
+        l2_outs = np.array(l2_outs)
+        
+        # Skip Connections
+        if USE_SKIP_CONNECTIONS:
+            l3_in = np.concatenate([l2_outs, l1_outs])
+        else:
+            l3_in = l2_outs
+            
+        # Layer 3
+        l3_outs = []
+        for neuron in self.level3:
+            ind = neuron.population[pilot_index]
+            l3_outs.append(np.dot(l3_in, ind['weights']) + ind['bias'])
+        
+        y_pred = softmax(np.array(l3_outs))
+        confidence = self.confidence_head.get_confidence(l3_in[:LEVEL2_NEURONS])
+        
+        return y_pred, confidence
+
     def train(
         self,
         X: np.ndarray,
@@ -294,7 +328,7 @@ class MultiClassEvoNet:
             y_true = y_oh[i]
             y_label = y[i]
             
-            y_pred, _, _, _ = self.forward(x, y_true, train=False)
+            y_pred, _, _, _, confidence = self.forward(x, y_true, train=False)
             pred_label = np.argmax(y_pred)
             
             if pred_label == y_label:

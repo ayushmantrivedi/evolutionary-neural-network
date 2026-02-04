@@ -64,35 +64,10 @@ class MemoryEvoPilot:
                 offset += 1
 
     def get_action(self, state: np.ndarray, pilot_index: int) -> int:
-        """Simple Forward Pass (copied from previous pilot logic)."""
-        l1_out = []
-        for neuron in self.net.level1:
-            ind = neuron.population[pilot_index]
-            val = np.dot(state, ind['weights']) + ind['bias']
-            l1_out.append(np.maximum(0, val))
-        l1_out = np.array(l1_out)
-        
-        l2_out = []
-        for neuron in self.net.level2:
-            ind = neuron.population[pilot_index]
-            val = np.dot(l1_out, ind['weights']) + ind['bias']
-            l2_out.append(np.maximum(0, val))
-        l2_out = np.array(l2_out)
-        
-        # Handle Skip Connections for Level 3 Input
-        w_shape = self.net.level3[0].population[pilot_index]['weights'].shape[0]
-        if w_shape == len(l2_out) + len(l1_out):
-            l3_in = np.concatenate([l2_out, l1_out])
-        else:
-            l3_in = l2_out
-            
-        final_out = []
-        for neuron in self.net.level3:
-            ind = neuron.population[pilot_index]
-            val = np.dot(l3_in, ind['weights']) + ind['bias']
-            final_out.append(val)
-            
-        return int(np.argmax(final_out))
+        """Uses the network's predict method (includes Attention)."""
+        y_pred, confidence = self.net.predict(state, pilot_index)
+        self.last_confidence = confidence
+        return int(np.argmax(y_pred))
 
     def update_hall_of_fame(self, rewards: List[float]):
         """Check if any pilot beat the all-time record."""

@@ -10,8 +10,8 @@ from train_memory_autopilot import MemoryEvoPilot, run_episode
 
 # Configure
 TICKER = "BTC-USD"
-WINDOW_SIZE = 20 # Increased context for Alpha Signals
-POP_SIZE = 30    # Larger population for harder problem
+PROVIDER = "binance" # Set to 'yf', 'binance', or 'ccxt'
+WINDOW_SIZE = 20     # Increased context for Alpha Signals
 GENS = 50
 
 # --- DOMAIN EXPERT METRICS ---
@@ -112,9 +112,8 @@ def train_specialist(regime_name, df_slice):
     env = make_env(df_slice)
     
     pilot = MemoryEvoPilot()
-    # Override input dim: Window * 7 features (Added ADX, etc)
-    pilot.input_dim = WINDOW_SIZE * 7
-    # Override output dim: 3 (Short, Neutral, Long)
+    # Updated input dim: Window * 10 features (Now including Tail Risk, Stationarity, etc)
+    pilot.input_dim = WINDOW_SIZE * 10
     pilot.output_dim = 3
     
     # Reinit network
@@ -139,14 +138,22 @@ def train_specialist(regime_name, df_slice):
     
     best_fitness_global = -float('inf')
     
+    # --- TRAINING LOOP ---
     for gen in range(1, GENS + 1):
-        fitness_scores = []
-        stats_log = [] # (Ret, Sortino, MDD)
+        mut_strength = 0.1 # Dynamic mutation strength could go here
         
-        for i in range(pilot.pop_size):
+        fitness_scores = []
+        stats_log = [] 
+        
+        for i in range(pilot.net.pop_size):
             fit, ret, sort, mdd, eq = run_pro_episode(env, pilot, i)
             fitness_scores.append(fit)
             stats_log.append((ret, sort, mdd))
+        
+        # Evolve the network (including new Attention/Confidence layers)
+        pilot.net.attention.evolve(fitness_scores, mut_strength)
+        # Pilot.evolve handles the neurons
+        # ... existing evolution logic ...
             
         best_idx = np.argmax(fitness_scores)
         best_fit = fitness_scores[best_idx]
@@ -170,13 +177,13 @@ def train_specialist(regime_name, df_slice):
 def run_simulation():
     print("🚀 LAUNCHING HEDGE FUND SIMULATION (3-CYCLE MASTERY)")
     
-    # 1. Load Data
-    fetcher = DataFetcher(TICKER)
+    # 1. Load Data with PRO Provider
+    fetcher = DataFetcher(TICKER, provider=PROVIDER)
     df = fetcher.fetch_data()
-    # Use NEW Alpha features
-    df = fetcher.add_advanced_features()
+    # Use Modular Alpha Intelligence
+    df = fetcher.process()
     
-    # 2. Split Regimes
+    # 2. Split Regimes (using modular fetcher)
     bull_df = fetcher.split_by_regime("bull_2020")
     bear_df = fetcher.split_by_regime("bear_2022")
     chop_df = fetcher.split_by_regime("chop_2023")
@@ -200,9 +207,8 @@ def run_simulation():
     print(f"   Chop Memory: {chop_pilot.stored_tasks}")
     
     # 4. Consolidate into Master Brain (The EvoTrader)
-    print("\n🧠 CONSOLIDATING INTO MASTER BRAIN...")
     master_pilot = MemoryEvoPilot()
-    master_pilot.input_dim = WINDOW_SIZE * 7
+    master_pilot.input_dim = WINDOW_SIZE * 10
     master_pilot.output_dim = 3
     from evonet.core.network import MultiClassEvoNet
     master_pilot.net = MultiClassEvoNet(master_pilot.input_dim, master_pilot.output_dim)

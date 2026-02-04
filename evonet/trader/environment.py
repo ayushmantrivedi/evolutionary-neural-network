@@ -23,21 +23,24 @@ class FinancialRegimeEnv(StocksEnv):
         self.action_space = spaces.Discrete(3)
         
         # --- OBSERVATION SPACE ---
-        # Features: [Log_Ret, ADX, MACD, BB_Pct, OBV_Slope, ATR_Pct, Position_Encoded]
-        # Dimension = 6 + 1 = 7
-        self.shape = (window_size, 7) 
+        # Features: [Log_Ret, ADX, MACD, BB_Pct, OBV_Slope, ATR_Pct, Kurtosis, Dist_SMA, Log_Ret_5d, Position]
+        # Dimension = 9 + 1 = 10
+        self.shape = (window_size, 10) 
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=self.shape, dtype=np.float32)
 
     def _process_data(self):
         prices = self.df.loc[:, 'Close'].to_numpy()
         
-        # Alpha Signals from DataLoader
+        # Alpha Signals from AlphaFactory
         log_ret = self.df.loc[:, 'Log_Ret'].to_numpy()
         adx = self.df.loc[:, 'ADX'].to_numpy()
         macd = self.df.loc[:, 'MACD_Hist'].to_numpy()
         bb_pct = self.df.loc[:, 'BB_Pct'].to_numpy()
         obv_slope = self.df.loc[:, 'OBV_Slope'].to_numpy()
         atr_pct = self.df.loc[:, 'ATR_Pct'].to_numpy()
+        kurtosis = self.df.loc[:, 'Kurtosis_20'].to_numpy()
+        dist_sma = self.df.loc[:, 'Distance_SMA200'].to_numpy()
+        log_ret_5d = self.df['Log_Ret'].rolling(5).sum().fillna(0).to_numpy()
         
         # Keep raw ATR for slippage calculation
         self.atr_raw = self.df.loc[:, 'ATR'].to_numpy()
@@ -62,7 +65,10 @@ class FinancialRegimeEnv(StocksEnv):
                 macd[ws:we],
                 bb_pct[ws:we],
                 obv_slope[ws:we],
-                atr_pct[ws:we]
+                atr_pct[ws:we],
+                kurtosis[ws:we],
+                dist_sma[ws:we],
+                log_ret_5d[ws:we]
             ])
             signal_features.append(features)
             
@@ -90,7 +96,7 @@ class FinancialRegimeEnv(StocksEnv):
         pos_val = float(self._current_position_int - 1) # 0->-1, 1->0, 2->1
         
         position_channel = np.full((self.window_size, 1), pos_val, dtype=np.float32)
-        final_obs = np.hstack([base_obs, position_channel]) # Shape (7)
+        final_obs = np.hstack([base_obs, position_channel]) # Shape (10)
         
         return final_obs.flatten()
 
