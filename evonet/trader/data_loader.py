@@ -26,10 +26,13 @@ class BaseFetcher(ABC):
 class YFinanceFetcher(BaseFetcher):
     """Fetches data from Yahoo Finance."""
     def fetch(self) -> pd.DataFrame:
-        print(f"📉 Fetching {self.ticker} [{self.interval}] via YFinance...")
+        print(f"[FETCH] Fetching {self.ticker} [{self.interval}] via YFinance...")
         self.df = yf.download(self.ticker, start=self.start_date, end=self.end_date, interval=self.interval)
         if isinstance(self.df.columns, pd.MultiIndex):
             self.df.columns = self.df.columns.get_level_values(0)
+        # Ensure UTC and Timezone-Naive for consistent comparisons
+        if self.df.index.tz is not None:
+            self.df.index = self.df.index.tz_convert(None)
         return self.df
 
 class CCXTFetcher(BaseFetcher):
@@ -37,7 +40,7 @@ class CCXTFetcher(BaseFetcher):
     def fetch(self) -> pd.DataFrame:
         try:
             import ccxt
-            print(f"📉 Fetching {self.ticker} via CCXT Generic...")
+            print(f"[FETCH] Fetching {self.ticker} via CCXT Generic...")
             # Placeholder for actual exchange selection
             exchange = ccxt.binance()
             ohlcv = exchange.fetch_ohlcv(self.ticker, self.interval)
@@ -47,13 +50,13 @@ class CCXTFetcher(BaseFetcher):
             self.df = df
             return self.df
         except ImportError:
-            print("⚠️ CCXT not installed. Falling back to YFinance mock data.")
+            print("[WARN] CCXT not installed. Falling back to YFinance mock data.")
             return YFinanceFetcher(self.ticker, self.start_date, self.end_date, self.interval).fetch()
 
 class BinanceFetcher(BaseFetcher):
     """Specialized Binance Fetcher for high-frequency data."""
     def fetch(self) -> pd.DataFrame:
-        print(f"📉 Fetching {self.ticker} via specialized Binance API...")
+        print(f"[FETCH] Fetching {self.ticker} via specialized Binance API...")
         # In professional production, use Binance Python SDK or REST directly
         return CCXTFetcher(self.ticker, self.start_date, self.end_date, self.interval).fetch()
 
@@ -62,10 +65,10 @@ class DataFetcher:
     Main Orchestrator for Data. 
     Can switch providers and applies AlphaFactory insights.
     """
-    def __init__(self, ticker="BTC-USD", start_date="2020-01-01", end_date="2023-12-31", interval="1d", provider="yf"):
+    def __init__(self, ticker="BTC-USD", start_date="2018-01-01", end_date=None, interval="1d", provider="yf"):
         self.ticker = ticker
         self.start_date = start_date
-        self.end_date = end_date
+        self.end_date = end_date # None = Now
         self.interval = interval
         
         if provider == "yf":
@@ -85,7 +88,7 @@ class DataFetcher:
         cache_file = os.path.join(self.cache_dir, f"{self.ticker}_{self.interval}.csv")
         
         if use_cache and os.path.exists(cache_file):
-            print(f"⚡ Loading cached data...")
+            print(f"[CACHE] Loading cached data...")
             self.df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
             return self.df
             
@@ -98,7 +101,7 @@ class DataFetcher:
         if self.df is None:
             self.fetch_data()
             
-        print("💡 Applying Modular Market Intelligence via AlphaFactory...")
+        print("[ALPHA] Applying Modular Market Intelligence via AlphaFactory...")
         self.df = AlphaFactory.apply_all(self.df)
         
         # Clean & Prep
@@ -114,7 +117,7 @@ class DataFetcher:
         if self.df is None: self.process()
         
         if scenario_type == "crash":
-            print("⚠️ INJECTING SYNTHETIC CRASH SCENARIO (-30% in 5 steps)")
+            print("[STRESS] INJECTING SYNTHETIC CRASH SCENARIO (-30% in 5 steps)")
             # Take a slice of current data and drop it significantly
             last_idx = len(self.df) // 2
             for i in range(5):
@@ -138,11 +141,11 @@ if __name__ == "__main__":
     df_loader = DataFetcher()
     df_loader.fetch_data()
     processed = df_loader.process()
-    print(f"✅ Data processed. Features: {processed.columns.tolist()}")
+    print(f"[OK] Data processed. Features: {processed.columns.tolist()}")
     
     # Showcase 'Growth' potential with Stress Injection
     crashed = df_loader.inject_stress_scenario("crash")
-    print(f"📉 Stress Test Injected. Min Log_Ret: {crashed['Log_Ret'].min():.4f}")
+    print(f"[STRESS] Stress Test Injected. Min Log_Ret: {crashed['Log_Ret'].min():.4f}")
 
 if __name__ == "__main__":
     # Test
@@ -151,4 +154,4 @@ if __name__ == "__main__":
     fetcher.add_indicators()
     bull = fetcher.split_by_regime("bull_2020")
     bear = fetcher.split_by_regime("bear_2022")
-    print("✅ Data Loader Verified.")
+    print("[OK] Data Loader Verified.")

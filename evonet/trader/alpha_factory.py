@@ -44,6 +44,7 @@ class StationarityFeature:
     """Converts price to log-returns (Stationary patterns)."""
     def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
         df['Log_Ret'] = np.log(df['Close'] / df['Close'].shift(1))
+        df['Log_Ret_5d'] = df['Log_Ret'].rolling(5).sum()
         return df
 
 @AlphaFactory.register("trend_strength")
@@ -119,6 +120,29 @@ class TailRiskFeature:
         sma200 = ta.sma(df['Close'], length=200)
         df['Distance_SMA200'] = (df['Close'] - sma200) / sma200 if sma200 is not None else 0
         return df.fillna(0)
+
+@AlphaFactory.register("risk_regime_features")
+class RiskRegimeFeature:
+    """
+    Calculates Volatility Regimes and Momentum safeguards.
+    """
+    def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
+        # 1. Volatility Regime (Normalized ATR)
+        if 'ATR' not in df.columns:
+            df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
+            
+        df['ATR_30d_Avg'] = df['ATR'].rolling(30).mean()
+        # Ratio > 2.0 = High Vol, > 3.0 = Extreme (Circuit Breaker)
+        df['Vol_Regime_Ratio'] = df['ATR'] / df['ATR_30d_Avg']
+        
+        # 2. RSI for Momentum Guard (Avoid buying Overbought > 70)
+        df['RSI'] = ta.rsi(df['Close'], length=14)
+        
+        # 3. Liquidity Proxy (Spread)
+        # Using (High - Low) / Close as a rough volatility/spread proxy if real Bid-Ask missing
+        df['Est_Spread_Pct'] = (df['High'] - df['Low']) / df['Close']
+        
+        return df
 
 if __name__ == "__main__":
     # Test stub

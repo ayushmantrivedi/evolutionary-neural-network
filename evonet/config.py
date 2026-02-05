@@ -41,10 +41,12 @@ class EvoNetConfig:
         use_cma_adaptation: Enable CMA-ES style covariance adaptation
         elite_count: Number of elite individuals to preserve
         use_skip_connections: Enable skip connections in network
+        window_size: Number of time steps for feature window
     """
     # Network architecture
     level1_neurons: int = 50
     level2_neurons: int = 20
+    window_size: int = 20
     
     # Population parameters (increased from 20 for better diversity)
     pop_size: int = 50
@@ -85,6 +87,9 @@ class EvoNetConfig:
     eta_mutation: float = 20.0  # Polynomial mutation distribution index
     use_cma_adaptation: bool = True  # Enable CMA-ES style adaptation
     elite_count: int = 3  # Number of elite individuals to preserve
+    
+    # Windowing Configuration
+    window_size: int = 20 # New global window size
     
     # Network Architecture Enhancements
     use_skip_connections: bool = True  # Skip connections between layers
@@ -139,6 +144,7 @@ ETA_MUTATION = DEFAULT_CONFIG.eta_mutation
 USE_CMA_ADAPTATION = DEFAULT_CONFIG.use_cma_adaptation
 ELITE_COUNT = DEFAULT_CONFIG.elite_count
 USE_SKIP_CONNECTIONS = DEFAULT_CONFIG.use_skip_connections
+WINDOW_SIZE = DEFAULT_CONFIG.window_size
 
 
 def get_output_directory() -> str:

@@ -12,7 +12,7 @@ from train_memory_autopilot import MemoryEvoPilot, run_episode
 TICKER = "BTC-USD"
 PROVIDER = "binance" # Set to 'yf', 'binance', or 'ccxt'
 WINDOW_SIZE = 20     # Increased context for Alpha Signals
-GENS = 50
+GENS = 5
 
 # --- DOMAIN EXPERT METRICS ---
 def calculate_downside_deviation(returns, target_return=0.0):
@@ -108,7 +108,7 @@ def make_env(df):
     return FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, len(df)), window_size=WINDOW_SIZE, fee=0.001)
 
 def train_specialist(regime_name, df_slice):
-    print(f"\n🪙 TRAINING EXPERT: {regime_name.upper()}")
+    print(f"\n[TRAIN] TRAINING EXPERT: {regime_name.upper()}")
     env = make_env(df_slice)
     
     pilot = MemoryEvoPilot()
@@ -123,7 +123,8 @@ def train_specialist(regime_name, df_slice):
     pilot.memory.theta_init = pilot.flat_init
     
     # --- DEBUG: Run Baseline (Buy & Hold) ---
-    print("   🔎 DEBUG: Running 'Buy & Hold' Baseline...")
+    # --- DEBUG: Run Baseline (Buy & Hold) ---
+    print("   [DEBUG] Running 'Buy & Hold' Baseline...")
     bh_env = make_env(df_slice)
     s, _ = bh_env.reset()
     bh_equity = 1.0
@@ -133,7 +134,7 @@ def train_specialist(regime_name, df_slice):
         bh_equity *= np.exp(r)
         steps += 1
         if t or tr: break
-    print(f"   🔎 Buy/Hold Final Equity: {bh_equity:.4f} ({ (bh_equity-1)*100:.2f}%)")
+    print(f"   [BENCHMARK] Buy/Hold Final Equity: {bh_equity:.4f} ({ (bh_equity-1)*100:.2f}%)")
     bh_env.close()
     
     best_fitness_global = -float('inf')
@@ -201,7 +202,7 @@ def run_simulation():
     # Training using 2023 Chop data
     chop_pilot = train_specialist("chop", chop_df)
     
-    print("\n✅ TRAINING COMPLETE. 3 Experts Created.")
+    print("\n[OK] TRAINING COMPLETE. 3 Experts Created.")
     print(f"   Bull Memory: {bull_pilot.stored_tasks}")
     print(f"   Bear Memory: {bear_pilot.stored_tasks}")
     print(f"   Chop Memory: {chop_pilot.stored_tasks}")
@@ -233,14 +234,14 @@ def run_simulation():
         
     master_pilot.stored_tasks = {"bull", "bear", "chop"}
     
-    print("🎉 EvoTrader 'Full Cycle' Expert Ready.")
+    print("[SUCCESS] EvoTrader 'Full Cycle' Expert Ready.")
     
     # 5. Save the Brain
     import pickle
     brain_path = "evotrader_brain.pkl"
     with open(brain_path, "wb") as f:
         pickle.dump(master_pilot, f)
-    print(f"💾 BRAIN SAVED: {brain_path}")
+    print(f"[SAVE] BRAIN SAVED: {brain_path}")
     print("   -> Contains: Weights, Memory Vectors (Bull/Bear/Chop)")
     
     # 6. Recommendation

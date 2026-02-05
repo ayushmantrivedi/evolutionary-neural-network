@@ -10,6 +10,14 @@ class FinancialRegimeEnv(StocksEnv):
     Wraps 'gym-anytrading' logic but adds specialized observation space for EvoNet.
     """
     def __init__(self, df, frame_bound, window_size, fee=0.001, slippage_std=0.0001):
+        # CRITICAL FIX: Validate frame_bound to prevent IndexError
+        # signal_features will have length = len(df) - window_size + 1
+        # So frame_bound[1] must be <= len(df) - window_size
+        max_valid_end = len(df) - window_size
+        if frame_bound[1] > max_valid_end:
+            print(f"   [WARNING] frame_bound[1]={frame_bound[1]} exceeds max_valid={max_valid_end}. Clamping.")
+            frame_bound = (frame_bound[0], max_valid_end)
+            
         # Initialize parent StocksEnv
         super().__init__(df, window_size, frame_bound)
         
@@ -53,8 +61,12 @@ class FinancialRegimeEnv(StocksEnv):
         valid_end = len(prices) - self.window_size + 1
         loop_end = min(end, valid_end)
         
+        
+        # FIX: Generate signal_features for ALL valid windows in the data
+        # This ensures signal_features aligns with the prices array
         signal_features = []
-        for i in range(start, loop_end):
+        max_index = len(prices) - self.window_size + 1
+        for i in range(max_index):
             ws = i
             we = i + self.window_size
             
@@ -72,17 +84,27 @@ class FinancialRegimeEnv(StocksEnv):
             ])
             signal_features.append(features)
             
-        self.prices = prices[self.frame_bound[0] - self.window_size : self.frame_bound[1]]
+        # Store FULL prices array to prevent IndexError on boundaries
+        self.prices = prices 
         self.signal_features = np.array(signal_features)
         
-        # Align ATR for slippage (same length as prices)
-        self.atr_slice = self.atr_raw[self.frame_bound[0] - self.window_size : self.frame_bound[1]]
+        # Align ATR for slippage (Full Array)
+        self.atr_slice = self.atr_raw
         
         return self.prices, self.signal_features
 
     def _get_observation(self):
-        idx = self._current_tick - self.frame_bound[0]
-        base_obs = self.signal_features[idx] # Shape (window_size, 6)
+        # FIX: Since signal_features now covers the ENTIRE DataFrame,
+        # use _current_tick directly as the index (no offset subtraction)
+        idx = self._current_tick
+        
+        # CRITICAL: Clamp idx to valid signal_features range
+        # signal_features has length = len(prices) - window_size + 1
+        max_valid_idx = len(self.signal_features) - 1
+        if idx > max_valid_idx:
+            idx = max_valid_idx
+            
+        base_obs = self.signal_features[idx] # Shape (window_size, 9)
         
         # Position Encoding: Short=-1.0, Neutral=0.0, Long=1.0
         # Map Discrete(3) 0,1,2 -> -1, 0, 1
@@ -113,12 +135,17 @@ class FinancialRegimeEnv(StocksEnv):
         """
         step_reward = 0.0
         
-        current_price = self.prices[self._current_tick]
-        last_price = self.prices[self._current_tick - 1]
+        # CRITICAL: Clamp tick indices to valid array ranges
+        max_price_idx = len(self.prices) - 1
+        current_tick_clamped = min(self._current_tick, max_price_idx)
+        prev_tick_clamped = min(self._current_tick - 1, max_price_idx)
+        
+        current_price = self.prices[current_tick_clamped]
+        last_price = self.prices[prev_tick_clamped]
         
         # Calculate Slippage (Random penalty based on Volatility/ATR)
         # Real slippage is usually against you.
-        current_atr = self.atr_slice[self._current_tick]
+        current_atr = self.atr_slice[current_tick_clamped]
         slippage = np.abs(np.random.normal(0, self.slippage_std * current_price))
         
         # 1. Calculate PnL from PREVIOUS position held to NOW
