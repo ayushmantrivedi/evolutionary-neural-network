@@ -122,22 +122,16 @@ class MemoryEvoPilot:
     def __init__(self, input_dim, output_dim, pop_size):
         self.input_dim = input_dim
         self.output_dim = output_dim
+        
+        # Create the network with standard initialization
         self.net = MultiClassEvoNet(input_dim, output_dim)
         
-        # Override population size
-        self.net.pop_size = pop_size
-        
-        # Re-initialize all layers with new pop_size
-        from evonet.core.neuron import EvoNeuron, OutputNeuron
-        from evonet.config import LEVEL1_NEURONS, LEVEL2_NEURONS
-        
-        self.net.level1 = [EvoNeuron(input_dim) for _ in range(LEVEL1_NEURONS)]
-        self.net.level2 = [EvoNeuron(LEVEL1_NEURONS) for _ in range(LEVEL2_NEURONS)]
-        self.net.level3 = [OutputNeuron(LEVEL2_NEURONS) for _ in range(output_dim)]
-        
-        # Re-init population for each neuron
-        for neuron in self.net.level1 + self.net.level2:
-            neuron.population = np.random.randn(pop_size, len(neuron.weights))
+        # The network already creates neurons with the default POP_SIZE from config
+        # We need to update the pop_size if different
+        if pop_size != self.net.pop_size:
+            print(f"   ⚠️  Requested pop_size={pop_size}, but using config POP_SIZE={self.net.pop_size}")
+            print(f"   To change, edit evonet/config.py: POP_SIZE = {pop_size}")
+            # Use the network's actual pop_size
             
     def get_action(self, state, genome_idx):
         """Get action from specific genome"""
@@ -145,47 +139,90 @@ class MemoryEvoPilot:
         return np.argmax(probs)
         
     def evolve(self, fitness_scores):
-        """Evolve population based on fitness"""
-        # Simple evolution: keep top performers, mutate rest
-        sorted_indices = np.argsort(fitness_scores)[::-1]
-        elite_count = max(1, int(len(fitness_scores) * ELITE_PERCENTAGE))
-        elite_indices = sorted_indices[:elite_count]
+        """Evolve population based on fitness - delegates to network's built-in evolution"""
+        # Convert fitness to errors (lower is better for the network's evolution)
+        # Negate fitness so higher fitness = lower error
+        errors = [-f for f in fitness_scores]
         
-        # For each layer, evolve
+        # Evolve each neuron layer using the network's built-in evolution
         for neuron in self.net.level1 + self.net.level2:
-            new_pop = []
+            # The neuron has built-in tournament_selection method
+            # We'll implement simple evolution here
+            sorted_indices = np.argsort(errors)  # Best (lowest error) first
+            elite_count = max(1, int(len(errors) * ELITE_PERCENTAGE))
             
-            # Keep elites
-            for idx in elite_indices:
-                new_pop.append(neuron.population[idx].copy())
+            # Keep track of best performer
+            neuron.best_idx = sorted_indices[0]
+            
+            # Create new population via tournament selection
+            new_population = []
+            
+            # Preserve elites
+            for idx in sorted_indices[:elite_count]:
+                new_population.append(neuron.population[idx])
                 
-            # Fill rest with mutations of elites
-            while len(new_pop) < self.net.pop_size:
-                parent_idx = np.random.choice(elite_indices)
-                child = neuron.population[parent_idx].copy()
+            # Fill rest with offspring of elites
+            while len(new_population) < neuron.pop_size:
+                # Select parent from elites
+                parent_idx = np.random.choice(sorted_indices[:elite_count])
+                parent = neuron.population[parent_idx]
                 
-                # Mutate
-                mutation_mask = np.random.rand(len(child)) < MUTATION_RATE
-                child[mutation_mask] += np.random.randn(mutation_mask.sum()) * 0.1
+                # Create offspring via mutation
+                from evonet.core.neuron import Individual
+                child = Individual(
+                    weights=parent.weights.copy(),
+                    bias=parent.bias,
+                    tau1=parent.tau1,
+                    tau2=parent.tau2
+                )
                 
-                new_pop.append(child)
+                # Mutate weights
+                mutation_mask = np.random.rand(len(child.weights)) < MUTATION_RATE
+                if mutation_mask.any():
+                    child.weights[mutation_mask] += np.random.randn(mutation_mask.sum()) * 0.1
+                    
+                # Mutate bias occasionally
+                if np.random.rand() < MUTATION_RATE:
+                    child.bias += np.random.randn() * 0.1
+                    
+                new_population.append(child)
                 
-            neuron.population = np.array(new_pop)
+            neuron.population = new_population[:neuron.pop_size]
             
     def get_flat_weights(self, genome_idx):
         """Get flattened weights of a genome"""
         weights = []
         for neuron in self.net.level1 + self.net.level2:
-            weights.append(neuron.population[genome_idx])
+            ind = neuron.population[genome_idx]
+            weights.append(ind.weights)
+            weights.append([ind.bias])
         return np.concatenate(weights)
         
     def set_flat_weights(self, flat_weights, genome_idx):
         """Set flattened weights to a genome"""
+        from evonet.core.neuron import Individual
         offset = 0
+        
         for neuron in self.net.level1 + self.net.level2:
-            length = len(neuron.population[genome_idx])
-            neuron.population[genome_idx] = flat_weights[offset:offset+length]
-            offset += length
+            # Extract weights for this neuron
+            n_weights = neuron.input_dim
+            weights = flat_weights[offset:offset+n_weights]
+            offset += n_weights
+            
+            # Extract bias
+            bias = flat_weights[offset]
+            offset += 1
+            
+            # Get tau values from existing individual
+            existing = neuron.population[genome_idx]
+            
+            # Create new individual
+            neuron.population[genome_idx] = Individual(
+                weights=weights.copy(),
+                bias=bias,
+                tau1=existing.tau1,
+                tau2=existing.tau2
+            )
 
 # ============================================================================
 # SECTION 6: FITNESS EVALUATION
