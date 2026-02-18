@@ -1,0 +1,498 @@
+{
+  "initial_capital": 1000000,
+  "current_capital": 985286.93,
+  "current_position": 2,
+  "trades": [
+    {
+      "date": "2026-01-06",
+      "from": "NEUTRAL",
+      "to": "LONG",
+      "price": 26178.69921875,
+      "cost": 1000.0,
+      "capital_before": 999000.0
+    }
+  ],
+  "daily_signals": [
+    {
+      "date": "2026-01-06",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26178.69921875,
+      "confidence": 0.7,
+      "features": {
+        "close": 26178.7,
+        "log_ret": -0.0027,
+        "adx": 0.1202,
+        "macd_hist": 1.0,
+        "bb_pct": 0.7373,
+        "atr_pct": 0.0066
+      },
+      "timestamp": "2026-02-18T17:03:39.655953"
+    },
+    {
+      "date": "2026-01-07",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26140.75,
+      "confidence": 0.7,
+      "features": {
+        "close": 26140.75,
+        "log_ret": -0.0015,
+        "adx": 0.1173,
+        "macd_hist": 1.0,
+        "bb_pct": 0.66,
+        "atr_pct": 0.0065
+      },
+      "timestamp": "2026-02-18T17:03:39.655953"
+    },
+    {
+      "date": "2026-01-08",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25876.849609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25876.85,
+        "log_ret": -0.0101,
+        "adx": 0.1158,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2194,
+        "atr_pct": 0.0069
+      },
+      "timestamp": "2026-02-18T17:03:39.661446"
+    },
+    {
+      "date": "2026-01-09",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25683.30078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 25683.3,
+        "log_ret": -0.0075,
+        "adx": 0.1252,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0236,
+        "atr_pct": 0.0073
+      },
+      "timestamp": "2026-02-18T17:03:39.662355"
+    },
+    {
+      "date": "2026-01-12",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25790.25,
+      "confidence": 0.7,
+      "features": {
+        "close": 25790.25,
+        "log_ret": 0.0042,
+        "adx": 0.1393,
+        "macd_hist": -1.0,
+        "bb_pct": 0.172,
+        "atr_pct": 0.0077
+      },
+      "timestamp": "2026-02-18T17:03:39.666284"
+    },
+    {
+      "date": "2026-01-13",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25732.30078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 25732.3,
+        "log_ret": -0.0022,
+        "adx": 0.1468,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1344,
+        "atr_pct": 0.008
+      },
+      "timestamp": "2026-02-18T17:03:39.668609"
+    },
+    {
+      "date": "2026-01-14",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25665.599609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25665.6,
+        "log_ret": -0.0026,
+        "adx": 0.1537,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0863,
+        "atr_pct": 0.008
+      },
+      "timestamp": "2026-02-18T17:03:39.668609"
+    },
+    {
+      "date": "2026-01-16",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25694.349609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25694.35,
+        "log_ret": 0.0011,
+        "adx": 0.1547,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1435,
+        "atr_pct": 0.008
+      },
+      "timestamp": "2026-02-18T17:03:39.672737"
+    },
+    {
+      "date": "2026-01-19",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25585.5,
+      "confidence": 0.7,
+      "features": {
+        "close": 25585.5,
+        "log_ret": -0.0042,
+        "adx": 0.1628,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0602,
+        "atr_pct": 0.008
+      },
+      "timestamp": "2026-02-18T17:03:39.675202"
+    },
+    {
+      "date": "2026-01-20",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25232.5,
+      "confidence": 0.7,
+      "features": {
+        "close": 25232.5,
+        "log_ret": -0.0139,
+        "adx": 0.1806,
+        "macd_hist": -1.0,
+        "bb_pct": -0.1356,
+        "atr_pct": 0.0087
+      },
+      "timestamp": "2026-02-18T17:03:39.676356"
+    },
+    {
+      "date": "2026-01-21",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25157.5,
+      "confidence": 0.7,
+      "features": {
+        "close": 25157.5,
+        "log_ret": -0.003,
+        "adx": 0.2032,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0667,
+        "atr_pct": 0.0092
+      },
+      "timestamp": "2026-02-18T17:03:39.676356"
+    },
+    {
+      "date": "2026-01-22",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25289.900390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25289.9,
+        "log_ret": 0.0052,
+        "adx": 0.216,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0937,
+        "atr_pct": 0.0093
+      },
+      "timestamp": "2026-02-18T17:03:39.681861"
+    },
+    {
+      "date": "2026-01-23",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25048.650390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25048.65,
+        "log_ret": -0.0096,
+        "adx": 0.2314,
+        "macd_hist": -1.0,
+        "bb_pct": 0.009,
+        "atr_pct": 0.0096
+      },
+      "timestamp": "2026-02-18T17:03:39.683753"
+    },
+    {
+      "date": "2026-01-27",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25175.400390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25175.4,
+        "log_ret": 0.005,
+        "adx": 0.2479,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1393,
+        "atr_pct": 0.0098
+      },
+      "timestamp": "2026-02-18T17:03:39.683753"
+    },
+    {
+      "date": "2026-01-28",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25342.75,
+      "confidence": 0.7,
+      "features": {
+        "close": 25342.75,
+        "log_ret": 0.0066,
+        "adx": 0.2557,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2676,
+        "atr_pct": 0.0096
+      },
+      "timestamp": "2026-02-18T17:03:39.689090"
+    },
+    {
+      "date": "2026-01-29",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25418.900390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25418.9,
+        "log_ret": 0.003,
+        "adx": 0.2581,
+        "macd_hist": -1.0,
+        "bb_pct": 0.3314,
+        "atr_pct": 0.0097
+      },
+      "timestamp": "2026-02-18T17:03:39.691200"
+    },
+    {
+      "date": "2026-01-30",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25320.650390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25320.65,
+        "log_ret": -0.0039,
+        "adx": 0.2603,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2931,
+        "atr_pct": 0.0096
+      },
+      "timestamp": "2026-02-18T17:03:39.692320"
+    },
+    {
+      "date": "2026-02-02",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25088.400390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25088.4,
+        "log_ret": -0.0092,
+        "adx": 0.2759,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1824,
+        "atr_pct": 0.0108
+      },
+      "timestamp": "2026-02-18T17:03:39.694406"
+    },
+    {
+      "date": "2026-02-03",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25727.55078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 25727.55,
+        "log_ret": 0.0252,
+        "adx": 0.264,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6075,
+        "atr_pct": 0.0133
+      },
+      "timestamp": "2026-02-18T17:03:39.698252"
+    },
+    {
+      "date": "2026-02-04",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25776.0,
+      "confidence": 0.7,
+      "features": {
+        "close": 25776.0,
+        "log_ret": 0.0019,
+        "adx": 0.2509,
+        "macd_hist": 1.0,
+        "bb_pct": 0.672,
+        "atr_pct": 0.013
+      },
+      "timestamp": "2026-02-18T17:03:39.699369"
+    },
+    {
+      "date": "2026-02-05",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25642.80078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 25642.8,
+        "log_ret": -0.0052,
+        "adx": 0.2387,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6027,
+        "atr_pct": 0.0127
+      },
+      "timestamp": "2026-02-18T17:03:39.702046"
+    },
+    {
+      "date": "2026-02-06",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25693.69921875,
+      "confidence": 0.7,
+      "features": {
+        "close": 25693.7,
+        "log_ret": 0.002,
+        "adx": 0.2248,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6846,
+        "atr_pct": 0.0124
+      },
+      "timestamp": "2026-02-18T17:03:39.703686"
+    },
+    {
+      "date": "2026-02-09",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25867.30078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 25867.3,
+        "log_ret": 0.0067,
+        "adx": 0.2175,
+        "macd_hist": 1.0,
+        "bb_pct": 0.8489,
+        "atr_pct": 0.012
+      },
+      "timestamp": "2026-02-18T17:03:39.706419"
+    },
+    {
+      "date": "2026-02-10",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25935.150390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25935.15,
+        "log_ret": 0.0026,
+        "adx": 0.2124,
+        "macd_hist": 1.0,
+        "bb_pct": 0.8797,
+        "atr_pct": 0.0115
+      },
+      "timestamp": "2026-02-18T17:03:39.706419"
+    },
+    {
+      "date": "2026-02-11",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25953.849609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25953.85,
+        "log_ret": 0.0007,
+        "adx": 0.2082,
+        "macd_hist": 1.0,
+        "bb_pct": 0.8746,
+        "atr_pct": 0.011
+      },
+      "timestamp": "2026-02-18T17:03:39.706419"
+    },
+    {
+      "date": "2026-02-12",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25807.19921875,
+      "confidence": 0.7,
+      "features": {
+        "close": 25807.2,
+        "log_ret": -0.0057,
+        "adx": 0.1991,
+        "macd_hist": 1.0,
+        "bb_pct": 0.7427,
+        "atr_pct": 0.0108
+      },
+      "timestamp": "2026-02-18T17:03:39.715390"
+    },
+    {
+      "date": "2026-02-13",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25471.099609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25471.1,
+        "log_ret": -0.0131,
+        "adx": 0.1886,
+        "macd_hist": 1.0,
+        "bb_pct": 0.4655,
+        "atr_pct": 0.0112
+      },
+      "timestamp": "2026-02-18T17:03:39.717778"
+    },
+    {
+      "date": "2026-02-16",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25682.75,
+      "confidence": 0.7,
+      "features": {
+        "close": 25682.75,
+        "log_ret": 0.0083,
+        "adx": 0.1809,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6469,
+        "atr_pct": 0.0112
+      },
+      "timestamp": "2026-02-18T17:03:39.719480"
+    },
+    {
+      "date": "2026-02-17",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25725.400390625,
+      "confidence": 0.7,
+      "features": {
+        "close": 25725.4,
+        "log_ret": 0.0017,
+        "adx": 0.1715,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6753,
+        "atr_pct": 0.0109
+      },
+      "timestamp": "2026-02-18T17:03:39.723256"
+    },
+    {
+      "date": "2026-02-18",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25819.349609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25819.35,
+        "log_ret": 0.0036,
+        "adx": 0.1605,
+        "macd_hist": 1.0,
+        "bb_pct": 0.7304,
+        "atr_pct": 0.0106
+      },
+      "timestamp": "2026-02-18T17:03:39.725262"
+    }
+  ],
+  "equity_curve": []
+}

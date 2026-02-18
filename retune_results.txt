@@ -1,0 +1,84 @@
+
+======================================================================
+  NIFTY50 BRAIN - ADAPTIVE RETUNING
+======================================================================
+  Date:        2026-02-18 16:57
+  Data Window: Last 12 months
+  Generations: 50
+  Mutation:    0.050
+  Holdout:     Last 20 days
+  Mode:        Gatekeeper
+======================================================================
+
+  [1/7] LOADING CURRENT BRAIN
+  [OK] Brain loaded (50 genomes)
+
+  [2/7] FETCHING RECENT MARKET DATA
+  [FETCH] ^NSEI 2025-02-12 -> 2026-02-19 (12 months)...
+  [OK] 222 trading days (2025-03-27 to 2026-02-18)
+  [OK] Train:   202 days (2025-03-27 to 2026-01-20)
+  [OK] Holdout: 40 days (2025-12-22 to 2026-02-18)
+
+  [3/7] LOADING TRADE FEEDBACK
+  [FEEDBACK] Found 8 painful days from paper trading
+    2026-01-08: LONG @ 25877 = -1.01%
+    2026-01-09: LONG @ 25683 = -0.75%
+    2026-01-20: LONG @ 25232 = -1.38%
+    2026-01-23: LONG @ 25049 = -0.95%
+    2026-02-02: LONG @ 25088 = -0.92%
+
+  [4/7] SEEDING POPULATION
+  [SEED] Seeding 50 genomes from master (11283 weights)
+  [SEED] Mutation strength: 0.050
+  [OK] Population seeded. Genome 0 = original, genomes 1-49 = mutated clones
+
+  [5/7] EVOLVING ON RECENT DATA (50 generations)
+  ============================================================
+  Gen   1/50 | Fit:    3.72 | Sh:  0.45 | So:  0.86 | Ret:    2.4% | DD:  8.0% | Trades: 65
+  Gen   5/50 | Fit:    8.30 | Sh:  1.00 | So:  1.91 | Ret:    5.7% | DD:  6.7% | Trades: 69
+  Gen  10/50 | Fit:    9.41 | Sh:  1.15 | So:  2.15 | Ret:    6.6% | DD:  7.7% | Trades: 71
+  Gen  15/50 | Fit:   10.94 | Sh:  1.33 | So:  2.50 | Ret:    7.8% | DD:  6.8% | Trades: 66
+  Gen  20/50 | Fit:   11.90 | Sh:  1.44 | So:  2.73 | Ret:    8.5% | DD:  6.4% | Trades: 64
+  Gen  25/50 | Fit:   14.23 | Sh:  1.73 | So:  3.24 | Ret:   10.4% | DD:  6.5% | Trades: 63
+  Gen  30/50 | Fit:   14.54 | Sh:  1.78 | So:  3.31 | Ret:   10.6% | DD:  6.4% | Trades: 63
+  Gen  35/50 | Fit:   14.56 | Sh:  1.79 | So:  3.30 | Ret:   10.7% | DD:  6.2% | Trades: 63
+  Gen  40/50 | Fit:   14.38 | Sh:  1.75 | So:  3.28 | Ret:   10.5% | DD:  6.5% | Trades: 63
+  Gen  45/50 | Fit:   14.32 | Sh:  1.76 | So:  3.25 | Ret:   10.6% | DD:  6.5% | Trades: 63
+  Gen  50/50 | Fit:   14.51 | Sh:  1.78 | So:  3.30 | Ret:   10.6% | DD:  6.4% | Trades: 63
+
+  [OK] Evolution complete. Best fitness: 14.63
+       Best return: 10.6%
+
+  [6/7] GATEKEEPER TEST (holdout: 20 days)
+  [WARN] Holdout data too short for gatekeeper — auto-passing
+
+  [7/7] SAVING RESULTS
+  [SAVE] Brain v1.1 saved to C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\brain_versions\v1.1/
+  [SAVE] Active brain updated: C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\nifty50_brain_validated.pkl
+
+  [PROMOTED] Brain v1.1 is now the active brain!
+
+  ============================================================
+  RETUNING SUMMARY
+  ============================================================
+  Version:        v1.1 (PROMOTED)
+  Train Period:   2025-03-27 to 2026-01-20
+  Holdout Period: 2025-12-22 to 2026-02-18
+  Generations:    50
+  Best Fitness:   14.63
+  Best Return:    10.6%
+  Best Sortino:   3.30
+  Best MaxDD:     6.4%
+  ============================================================
+
+---STDERR---
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features

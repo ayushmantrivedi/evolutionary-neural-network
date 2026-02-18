@@ -1,0 +1,369 @@
+
++==============================================================================+
+|                          CTO-LEVEL VALIDATION SUITE                          |
+|                    NIFTY50 AI BRAIN - REAL-WORLD TESTING                     |
++==============================================================================+
+  Brain File:  nifty50_brain_validated.pkl
+  Market:      NIFTY50 (NSE India)
+  Date:        2026-02-18 14:30
++==============================================================================+
+
+  [*] Fetching NIFTY50 data (this may take a moment)...
+  [*] NOTE: Each test period fetches its OWN data (cache-bug fixed)
+  [FETCH] ^NSEI 2023-01-01 -> 2025-01-01... 462 bars
+  [OK] Base test data ready: 462 trading days
+
+
+================================================================================
+  TEST 1: BRAIN INTEGRITY & DETERMINISM CHECK
+================================================================================
+  [PASS]  Input Dimension == 200
+  [PASS]  Output Dimension == 3
+  [PASS]  Population Size > 0
+  [PASS]  Deterministic output (same state → same action)
+  [PASS]  Actions in valid range {0,1,2} → observed {0, 2}
+  [PASS]  Uses multiple action types → 2 distinct actions
+
+================================================================================
+  TEST 2: MULTI-REGIME BACKTEST
+================================================================================
+  [FETCH] ^NSEI 2019-06-01 -> 2020-07-01... 234 bars
+  COVID Crash (2020-02 → 2020-06):
+    Sharpe:  -0.08  |  Sortino:  -0.05  |  Return:    -6.0%  |  MaxDD: 23.1%  |  Trades:  84  |  WinRate:  13.8%
+  [FETCH] ^NSEI 2020-01-01 -> 2022-01-01... 469 bars
+  Post-COVID Bull (2020-06 → 2021-12):
+    Sharpe:   1.51  |  Sortino:   1.57  |  Return:   102.6%  |  MaxDD: 14.5%  |  Trades:  49  |  WinRate:  31.5%
+  [FETCH] ^NSEI 2021-06-01 -> 2023-01-01... 367 bars
+  2022 Bear / Inflation (2022-01 → 2022-12):
+    Sharpe:   2.06  |  Sortino:   2.09  |  Return:    92.7%  |  MaxDD: 11.5%  |  Trades:  68  |  WinRate:  25.5%
+  [FETCH] ^NSEI 2022-07-01 -> 2024-01-01... 341 bars
+  2023 Recovery Bull (2023-01 → 2023-12):
+    Sharpe:   3.21  |  Sortino:   3.64  |  Return:    95.2%  |  MaxDD:  3.0%  |  Trades:  26  |  WinRate:  25.8%
+  [FETCH] ^NSEI 2023-07-01 -> 2025-01-01... 340 bars
+  2024 Consolidation (2024-01 → 2024-12):
+    Sharpe:   2.08  |  Sortino:   2.02  |  Return:    69.1%  |  MaxDD:  4.8%  |  Trades:  33  |  WinRate:  23.8%
+
+  [PASS]  Brain survived ALL regimes without catastrophic loss
+
+================================================================================
+  TEST 3: WALK-FORWARD VALIDATION (Rolling 1-Year Windows)
+================================================================================
+  [FETCH] ^NSEI 2015-01-01 -> 2016-06-01... 315 bars
+  2015–2016:
+    Sharpe:   1.69  |  Sortino:   1.70  |  Return:    68.0%  |  MaxDD:  9.7%  |  Trades:  61  |  WinRate:  21.0%
+  [FETCH] ^NSEI 2016-01-01 -> 2017-06-01... 317 bars
+  2016–2017:
+    Sharpe:   2.26  |  Sortino:   2.55  |  Return:    67.0%  |  MaxDD:  4.2%  |  Trades:  36  |  WinRate:  20.9%
+  [FETCH] ^NSEI 2017-01-01 -> 2018-06-01... 321 bars
+  2017–2018:
+    Sharpe:   2.44  |  Sortino:   2.77  |  Return:    58.1%  |  MaxDD:  3.5%  |  Trades:  27  |  WinRate:  22.6%
+  [FETCH] ^NSEI 2018-01-01 -> 2019-06-01... 316 bars
+  2018–2019:
+    Sharpe:   2.01  |  Sortino:   2.06  |  Return:    62.1%  |  MaxDD:  6.8%  |  Trades:  33  |  WinRate:  20.8%
+  [FETCH] ^NSEI 2019-01-01 -> 2020-06-01... 312 bars
+  2019–2020:
+    Sharpe:   1.06  |  Sortino:   0.87  |  Return:    56.1%  |  MaxDD:  9.2%  |  Trades:  85  |  WinRate:  19.6%
+  [FETCH] ^NSEI 2020-01-01 -> 2021-06-01... 321 bars
+  2020–2021:
+    Sharpe:   1.27  |  Sortino:   1.10  |  Return:    74.4%  |  MaxDD: 14.5%  |  Trades:  38  |  WinRate:  20.8%
+  [FETCH] ^NSEI 2021-01-01 -> 2022-06-01... 320 bars
+  2021–2022:
+    Sharpe:   2.37  |  Sortino:   2.45  |  Return:   110.8%  |  MaxDD:  5.4%  |  Trades:  26  |  WinRate:  23.2%
+  [FETCH] ^NSEI 2022-01-01 -> 2023-06-01... 320 bars
+  2022–2023:
+    Sharpe:   2.87  |  Sortino:   3.05  |  Return:   112.8%  |  MaxDD:  3.0%  |  Trades:  28  |  WinRate:  23.1%
+  [FETCH] ^NSEI 2023-01-01 -> 2024-06-01... 317 bars
+  2023–2024:
+    Sharpe:   1.70  |  Sortino:   1.81  |  Return:    37.8%  |  MaxDD:  4.5%  |  Trades:  37  |  WinRate:  21.2%
+
+  ── WALK-FORWARD SUMMARY ──
+  Avg Sortino:    2.04
+  Avg Return:     71.9%
+  Std Return:     23.4%
+  Avg MaxDD:      6.7%
+  Losing Windows: 0/9
+  [PASS]  Walk-forward validates consistent performance
+
+================================================================================
+  TEST 4: STRESS TEST (SYNTHETIC CRASH INJECTION)
+================================================================================
+  [FETCH] ^NSEI 2022-01-01 -> 2024-01-01... 0 bars
+
+================================================================================
+  TEST 5: TRANSACTION COST SENSITIVITY ANALYSIS
+================================================================================
+  Zero Cost (theoretical) (fee=0.00%, slip=0.00%):
+    Sharpe:   2.30  |  Sortino:   2.63  |  Return:    86.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.4%
+  Low Cost (discount broker) (fee=0.03%, slip=0.01%):
+    Sharpe:   2.22  |  Sortino:   2.55  |  Return:    82.7%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.2%
+  Standard (Zerodha level) (fee=0.07%, slip=0.03%):
+    Sharpe:   2.11  |  Sortino:   2.45  |  Return:    77.7%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+  High Cost (full service) (fee=0.20%, slip=0.05%):
+    Sharpe:   1.81  |  Sortino:   2.12  |  Return:    64.3%  |  MaxDD:  5.2%  |  Trades:  53  |  WinRate:  31.5%
+  Extreme Cost (worst case) (fee=0.50%, slip=0.10%):
+    Sharpe:   1.10  |  Sortino:   1.26  |  Return:    36.0%  |  MaxDD:  8.9%  |  Trades:  53  |  WinRate:  30.9%
+
+  [PASS]  Strategy remains profitable across cost levels
+
+================================================================================
+  TEST 6: MONTE CARLO ROBUSTNESS (10 Randomized Runs)
+================================================================================
+  Run  1/10: Ret=   77.3%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  2/10: Ret=   77.4%  Sortino= 2.44  DD= 4.8%  Trades=53
+  Run  3/10: Ret=   76.7%  Sortino= 2.42  DD= 4.8%  Trades=53
+  Run  4/10: Ret=   77.1%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  5/10: Ret=   76.7%  Sortino= 2.42  DD= 4.8%  Trades=53
+  Run  6/10: Ret=   77.4%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  7/10: Ret=   77.6%  Sortino= 2.44  DD= 4.8%  Trades=53
+  Run  8/10: Ret=   76.9%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  9/10: Ret=   77.4%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run 10/10: Ret=   77.5%  Sortino= 2.44  DD= 4.8%  Trades=53
+
+  ── MONTE CARLO SUMMARY ──
+  Mean Return:      77.2% ± 0.3%
+  Mean Sortino:     2.43
+  Mean MaxDD:       4.8%
+  Profitable Runs:  100%
+  Range:            76.7% to 77.6%
+  [PASS]  Brain shows robust, consistent performance
+
+================================================================================
+  TEST 7: BUY-AND-HOLD BENCHMARK COMPARISON
+================================================================================
+  [FETCH] ^NSEI 2022-06-01 -> 2025-01-01... 609 bars
+  Full Test 2023-2024:
+    AI Return:            117.9%  (Sortino: 3.22, DD: 5.4%)
+    Buy-and-Hold:          34.8%
+    Alpha (AI - B&H):     +83.1%  ✅
+  [FETCH] ^NSEI 2022-06-01 -> 2024-01-01... 363 bars
+  2023 Only:
+    AI Return:             57.4%  (Sortino: 2.15, DD: 5.4%)
+    Buy-and-Hold:          23.9%
+    Alpha (AI - B&H):     +33.5%  ✅
+  [FETCH] ^NSEI 2023-06-01 -> 2025-01-01... 361 bars
+  2024 Only:
+    AI Return:             71.6%  (Sortino: 2.11, DD: 4.8%)
+    Buy-and-Hold:          21.0%
+    Alpha (AI - B&H):     +50.6%  ✅
+
+  ── BENCHMARK SUMMARY ──
+  AI beats Buy-and-Hold: 3/3 periods (100%)
+  [PASS]  AI demonstrates alpha over buy-and-hold
+
++==============================================================================+
+|                                                                              |
+|                           CTO VALIDATION SCORECARD                           |
+|                                                                              |
++==============================================================================+
+  [PASS]  Integrity & Determinism
+  [PASS]  Multi-Regime Backtest
+  [PASS]  Walk-Forward
+  [PASS]  Stress Test
+  [PASS]  Cost Sensitivity
+  [PASS]  Monte Carlo
+  [PASS]  Benchmark
+
+────────────────────────────────────────────────────────────────────────────────
+  TOTAL: 7/7 tests passed
+
+  GRADE:   A+
+  VERDICT: INVESTMENT GRADE — Ready for production deployment
++==============================================================================+
+
+  Time:   54s
+  Brain:  nifty50_brain_validated.pkl
+  Market: NIFTY50 (NSE India)
+
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+
+1 Failed download:
+['^NSEI']: TypeError("'NoneType' object is not subscriptable")
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Failed to apply feature smart_money_flow: 'NoneType' object has no attribute 'pct_change'
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features

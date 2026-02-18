@@ -1,0 +1,378 @@
+
++==============================================================================+
+|                          CTO-LEVEL VALIDATION SUITE                          |
+|                    NIFTY50 AI BRAIN - REAL-WORLD TESTING                     |
++==============================================================================+
+  Brain File:  nifty50_brain_validated.pkl
+  Market:      NIFTY50 (NSE India)
+  Date:        2026-02-18 14:25
++==============================================================================+
+
+  [*] Fetching NIFTY50 data (this may take a moment)...
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  [OK] Data ready: 462 trading days
+
+
+================================================================================
+  TEST 1: BRAIN INTEGRITY & DETERMINISM CHECK
+================================================================================
+  [PASS]  Input Dimension == 200
+  [PASS]  Output Dimension == 3
+  [PASS]  Population Size > 0
+  [PASS]  Deterministic output (same state → same action)
+  [PASS]  Actions in valid range {0,1,2} → observed {0, 2}
+  [PASS]  Uses multiple action types → 2 distinct actions
+
+================================================================================
+  TEST 2: MULTI-REGIME BACKTEST
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  COVID Crash (2020-02 → 2020-06):
+    Sharpe:   2.11  |  Sortino:   2.45  |  Return:    77.7%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.0%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  Post-COVID Bull (2020-06 → 2021-12):
+    Sharpe:   2.10  |  Sortino:   2.43  |  Return:    77.1%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2022 Bear / Inflation (2022-01 → 2022-12):
+    Sharpe:   2.11  |  Sortino:   2.43  |  Return:    77.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.0%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2023 Recovery Bull (2023-01 → 2023-12):
+    Sharpe:   2.11  |  Sortino:   2.43  |  Return:    77.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2024 Consolidation (2024-01 → 2024-12):
+    Sharpe:   2.10  |  Sortino:   2.43  |  Return:    77.2%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+
+  [PASS]  Brain survived ALL regimes without catastrophic loss
+
+================================================================================
+  TEST 3: WALK-FORWARD VALIDATION (Rolling 1-Year Windows)
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2015–2016:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.6%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2016–2017:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.3%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2017–2018:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2018–2019:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.7%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2019–2020:
+    Sharpe:   2.10  |  Sortino:   2.43  |  Return:    77.1%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2020–2021:
+    Sharpe:   2.10  |  Sortino:   2.43  |  Return:    77.2%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2021–2022:
+    Sharpe:   2.10  |  Sortino:   2.44  |  Return:    77.2%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2022–2023:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.5%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2023–2024:
+    Sharpe:   2.11  |  Sortino:   2.44  |  Return:    77.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+
+  ── WALK-FORWARD SUMMARY ──
+  Avg Sortino:    2.44
+  Avg Return:     77.4%
+  Std Return:     0.2%
+  Avg MaxDD:      4.8%
+  Losing Windows: 0/9
+  [PASS]  Walk-forward validates consistent performance
+
+================================================================================
+  TEST 4: STRESS TEST (SYNTHETIC CRASH INJECTION)
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  Flash Crash (-15% in 3 days):
+    Sharpe:   2.02  |  Sortino:   2.11  |  Return:    81.2%  |  MaxDD:  5.5%  |  Trades:  54  |  WinRate:  32.1%
+           → [PASS] Brain survived
+  Prolonged Bear (-25% in 20 days):
+    Sharpe:   2.25  |  Sortino:   2.77  |  Return:    91.7%  |  MaxDD:  4.8%  |  Trades:  50  |  WinRate:  32.2%
+           → [PASS] Brain survived
+  V-Recovery (-20% then +25%):
+    Sharpe:   2.34  |  Sortino:   3.07  |  Return:   105.5%  |  MaxDD:  4.8%  |  Trades:  54  |  WinRate:  32.1%
+           → [PASS] Brain survived
+  Black Swan (-35% in 1 day):
+    Sharpe:   1.98  |  Sortino:   2.05  |  Return:    79.5%  |  MaxDD:  6.3%  |  Trades:  54  |  WinRate:  32.1%
+           → [PASS] Brain survived
+
+================================================================================
+  TEST 5: TRANSACTION COST SENSITIVITY ANALYSIS
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  Zero Cost (theoretical) (fee=0.00%, slip=0.00%):
+    Sharpe:   2.30  |  Sortino:   2.63  |  Return:    86.4%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.4%
+  Low Cost (discount broker) (fee=0.03%, slip=0.01%):
+    Sharpe:   2.22  |  Sortino:   2.55  |  Return:    82.6%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.2%
+  Standard (Zerodha level) (fee=0.07%, slip=0.03%):
+    Sharpe:   2.10  |  Sortino:   2.43  |  Return:    76.9%  |  MaxDD:  4.8%  |  Trades:  53  |  WinRate:  32.1%
+  High Cost (full service) (fee=0.20%, slip=0.05%):
+    Sharpe:   1.80  |  Sortino:   2.10  |  Return:    63.7%  |  MaxDD:  5.3%  |  Trades:  53  |  WinRate:  31.4%
+  Extreme Cost (worst case) (fee=0.50%, slip=0.10%):
+    Sharpe:   1.12  |  Sortino:   1.29  |  Return:    36.8%  |  MaxDD:  8.9%  |  Trades:  53  |  WinRate:  30.8%
+
+  [PASS]  Strategy remains profitable across cost levels
+
+================================================================================
+  TEST 6: MONTE CARLO ROBUSTNESS (10 Randomized Runs)
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  Run  1/10: Ret=   77.3%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  2/10: Ret=   77.4%  Sortino= 2.44  DD= 4.8%  Trades=53
+  Run  3/10: Ret=   76.7%  Sortino= 2.42  DD= 4.8%  Trades=53
+  Run  4/10: Ret=   77.1%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  5/10: Ret=   76.7%  Sortino= 2.42  DD= 4.8%  Trades=53
+  Run  6/10: Ret=   77.4%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  7/10: Ret=   77.6%  Sortino= 2.44  DD= 4.8%  Trades=53
+  Run  8/10: Ret=   76.9%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run  9/10: Ret=   77.4%  Sortino= 2.43  DD= 4.8%  Trades=53
+  Run 10/10: Ret=   77.5%  Sortino= 2.44  DD= 4.8%  Trades=53
+
+  ── MONTE CARLO SUMMARY ──
+  Mean Return:      77.2% ± 0.3%
+  Mean Sortino:     2.43
+  Mean MaxDD:       4.8%
+  Profitable Runs:  100%
+  Range:            76.7% to 77.6%
+  [PASS]  Brain shows robust, consistent performance
+
+================================================================================
+  TEST 7: BUY-AND-HOLD BENCHMARK COMPARISON
+================================================================================
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  Full Test 2023-2024:
+    AI Return:             77.2%  (Sortino: 2.43, DD: 4.8%)
+    Buy-and-Hold:          38.7%
+    Alpha (AI - B&H):     +38.4%  ✅
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2023 Only:
+    AI Return:             77.4%  (Sortino: 2.44, DD: 4.8%)
+    Buy-and-Hold:          38.7%
+    Alpha (AI - B&H):     +38.7%  ✅
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+  2024 Only:
+    AI Return:             77.2%  (Sortino: 2.43, DD: 4.8%)
+    Buy-and-Hold:          38.7%
+    Alpha (AI - B&H):     +38.5%  ✅
+
+  ── BENCHMARK SUMMARY ──
+  AI beats Buy-and-Hold: 3/3 periods (100%)
+  [PASS]  AI demonstrates alpha over buy-and-hold
+
++==============================================================================+
+|                                                                              |
+|                           CTO VALIDATION SCORECARD                           |
+|                                                                              |
++==============================================================================+
+  [PASS]  Integrity & Determinism
+  [PASS]  Multi-Regime Backtest
+  [PASS]  Walk-Forward
+  [PASS]  Stress Test
+  [PASS]  Cost Sensitivity
+  [PASS]  Monte Carlo
+  [PASS]  Benchmark
+
+────────────────────────────────────────────────────────────────────────────────
+  TOTAL: 7/7 tests passed
+
+  GRADE:   A+
+  VERDICT: INVESTMENT GRADE — Ready for production deployment
++==============================================================================+
+
+  Time:   13s
+  Brain:  nifty50_brain_validated.pkl
+  Market: NIFTY50 (NSE India)
+
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
