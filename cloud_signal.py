@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore")
 # ── Config ────────────────────────────────────────────────────────────────────
 TICKER          = "^NSEI"
 ROOT_DIR        = os.path.dirname(os.path.abspath(__file__))
-BRAIN_FILE      = os.path.join(ROOT_DIR, "nifty50_brain_validated.pkl")
+BRAIN_FILE      = os.path.join(ROOT_DIR, "brain_weights.pkl")   # portable numpy dict
 TRADE_LOG_FILE  = os.path.join(ROOT_DIR, "paper_trades.json")
 WINDOW_SIZE     = 20
 LOOKBACK_DAYS   = 120          # fetch extra buffer for indicator warmup
@@ -112,14 +112,36 @@ FEATURE_COLS = [
 ]   # exactly 9 features — matches training environment
 
 
-# ── Brain inference ───────────────────────────────────────────────────────────
-def get_signal(brain, df: pd.DataFrame, prev_position: int):
+# ── Brain inference (pure numpy — no evonet needed) ──────────────────────────
+def softmax(x: np.ndarray) -> np.ndarray:
+    e = np.exp(x - x.max())
+    return e / e.sum()
+
+def forward_pass(neurons: list, x: np.ndarray) -> np.ndarray:
+    """Run one EvoNet forward pass.
+    Architecture: ReLU(L1) -> ReLU(L2) -> skip-concat -> softmax(L3)
+    Exactly replicates MultiClassEvoNet.predict() with USE_SKIP_CONNECTIONS=True.
+    """
+    # Layer 1 — ReLU
+    l1 = np.array([np.maximum(0.0, np.dot(x, n['weights']) + n['bias'])
+                   for n in neurons[0]], dtype=np.float32)
+    # Layer 2 — ReLU
+    l2 = np.array([np.maximum(0.0, np.dot(l1, n['weights']) + n['bias'])
+                   for n in neurons[1]], dtype=np.float32)
+    # Skip connection: concat(l2, l1)
+    l3_in = np.concatenate([l2, l1])
+    # Layer 3 — linear + softmax
+    l3 = np.array([np.dot(l3_in, n['weights']) + n['bias']
+                   for n in neurons[2]], dtype=np.float32)
+    return softmax(l3)
+
+def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
     window = df.iloc[-WINDOW_SIZE:]
     obs    = window[FEATURE_COLS].values.astype(np.float32)          # (20, 9)
     pos_ch = np.full((WINDOW_SIZE, 1), float(prev_position - 1), dtype=np.float32)
     state  = np.nan_to_num(np.hstack([obs, pos_ch]).flatten())       # (200,)
-    action = brain.get_action(state, 0)
-    return int(action)
+    probs  = forward_pass(brain['neurons'], state)
+    return int(np.argmax(probs))
 
 
 # ── Trade log ─────────────────────────────────────────────────────────────────
@@ -238,7 +260,8 @@ def main():
         sys.exit(1)
     with open(BRAIN_FILE, "rb") as f:
         brain = pickle.load(f)
-    print(f"      Loaded — pop_size={getattr(brain,'pop_size',50)}")
+    layers = brain['neurons']
+    print(f"      Loaded — arch:{brain['input_dim']}->{brain['layer_sizes']}->{brain['output_dim']}")
 
     # 2. Market data
     print("[2/5] Fetching NIFTY50 data...")
