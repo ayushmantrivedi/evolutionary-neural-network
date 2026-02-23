@@ -40,14 +40,11 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      # 3. Install all dependencies (core + evonet package itself)
+      # 3. Install dependencies (cloud_signal.py is self-contained)
       - name: "📦 Install dependencies"
         run: |
           pip install --upgrade pip --quiet
-          # All packages needed by evonet + cloud_signal.py
-          pip install numpy pandas scikit-learn pandas_ta yfinance requests gymnasium --quiet
-          # Install the local evonet package so imports work on Ubuntu
-          pip install -e . --quiet
+          pip install numpy pandas yfinance requests --quiet
 
       # 4. Run the cloud signal script
       - name: "🧠 Run EvoTrader signal"
