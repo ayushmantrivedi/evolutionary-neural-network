@@ -1,0 +1,65 @@
+name: "🧠 EvoTrader Daily Signal"
+
+# ─── Schedule ────────────────────────────────────────────────────────────────
+# Runs Monday–Friday at 3:37 PM IST = 10:07 AM UTC
+# (A few minutes after NSE closes at 3:30 PM IST)
+on:
+  schedule:
+    - cron: "7 10 * * 1-5"   # Mon–Fri, 10:07 UTC = 3:37 PM IST
+
+  # Also lets you trigger manually from GitHub → Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode (signal / backfill)"
+        required: false
+        default: "signal"
+
+# ─── Permissions ─────────────────────────────────────────────────────────────
+permissions:
+  contents: write   # so the job can commit paper_trades.json back to repo
+
+# ─── Job ─────────────────────────────────────────────────────────────────────
+jobs:
+  daily-signal:
+    name: "Generate Signal & Notify"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # 1. Checkout repo (includes the brain .pkl file)
+      - name: "📥 Checkout repo"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 2. Set up Python
+      - name: "🐍 Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. Install dependencies
+      - name: "📦 Install dependencies"
+        run: |
+          pip install --upgrade pip --quiet
+          pip install numpy pandas yfinance requests gymnasium --quiet
+
+      # 4. Run the cloud signal script
+      - name: "🧠 Run EvoTrader signal"
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python cloud_signal.py
+
+      # 5. Commit the updated paper_trades.json back to the repo
+      #    This persists the trade log across runs (GitHub is our "database")
+      - name: "💾 Save trade log to repo"
+        run: |
+          git config user.name  "EvoTrader Bot"
+          git config user.email "bot@evotrader.ai"
+          git add paper_trades.json
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "📊 Signal update $(date -u '+%Y-%m-%d %H:%M UTC')" && \
+            git push
