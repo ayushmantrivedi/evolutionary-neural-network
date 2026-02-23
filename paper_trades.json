@@ -1,6 +1,6 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 979855.3051055522,
+  "current_capital": 979169.4063919783,
   "current_position": 0,
   "trades": [
     {
@@ -524,6 +524,12 @@
     {
       "date": "2026-02-23",
       "equity": 979855.3051055522,
+      "position": "SHORT",
+      "price": 25713.0
+    },
+    {
+      "date": "2026-02-23",
+      "equity": 979169.4063919783,
       "position": "SHORT",
       "price": 25713.0
     }
