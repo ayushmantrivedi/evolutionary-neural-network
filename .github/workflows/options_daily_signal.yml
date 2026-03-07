@@ -1,0 +1,88 @@
+name: "📈 EvoTrader Options Signal"
+
+# ─── Schedule ────────────────────────────────────────────────────────────────
+# Two daily triggers (mon-fri) mirroring institutional trading desks:
+#   • 09:20 AM IST = 03:50 UTC : PRE-MARKET  — entry signal before market opens
+#   • 03:25 PM IST = 09:55 UTC : NEAR-CLOSE  — exit/adjustment check
+on:
+  schedule:
+    - cron: "50 3 * * 1-5"   # Mon–Fri  09:20 AM IST  →  entry signal
+    - cron: "55 9 * * 1-5"   # Mon–Fri  03:25 PM IST  →  exit check
+
+  # Manually trigger from GitHub → Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Signal mode"
+        required: false
+        default: "entry"
+        type: choice
+        options:
+          - entry
+          - exit
+          - status
+
+# ─── Permissions ─────────────────────────────────────────────────────────────
+permissions:
+  contents: write   # commit options_trades.json back to repo
+
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+jobs:
+  options-signal:
+    name: "Options Signal & Notify"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # 1. Checkout (includes brain_weights.pkl and options_trades.json)
+      - name: "📥 Checkout repo"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 2. Python setup
+      - name: "🐍 Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. Dependencies (options_cloud_signal.py is fully self-contained)
+      - name: "📦 Install dependencies"
+        run: |
+          pip install --upgrade pip --quiet
+          pip install numpy pandas yfinance requests --quiet
+
+      # 4. Determine mode:
+      #    • Morning cron  (03:50 UTC) → entry
+      #    • Evening cron  (09:55 UTC) → exit
+      #    • Manual dispatch → user-selected mode
+      - name: "🔍 Determine signal mode"
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "MODE=${{ github.event.inputs.mode }}" >> $GITHUB_ENV
+          elif [ "$(date -u +%H)" = "03" ]; then
+            echo "MODE=entry" >> $GITHUB_ENV
+          else
+            echo "MODE=exit" >> $GITHUB_ENV
+          fi
+
+      # 5. Run the options signal engine
+      - name: "🧠 Run Options Signal Engine"
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SIGNAL_MODE:      ${{ env.MODE }}
+        run: python options_cloud_signal.py
+
+      # 6. Commit the updated options_trades.json back to repo
+      #    (GitHub repo acts as the persistent database — free & versioned)
+      - name: "💾 Save options trade log"
+        run: |
+          git config user.name  "EvoTrader Options Bot"
+          git config user.email "options-bot@evotrader.ai"
+          git add options_trades.json
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "Options signal [$(date -u '+%Y-%m-%d %H:%M UTC')] mode=${{ env.MODE }}" && \
+            git push

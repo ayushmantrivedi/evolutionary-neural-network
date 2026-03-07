@@ -1,0 +1,83 @@
+{
+  "initial_capital": 1000000,
+  "current_capital": 1000000,
+  "open_position": {
+    "date_entered": "2026-03-06",
+    "strategy": "Short Call Spread (Bear Call)",
+    "atm_at_entry": 24450.0,
+    "spot_at_entry": 24450.44921875,
+    "net_premium": -2242.5,
+    "net_delta": -3.17,
+    "net_theta": 31.0,
+    "net_vega": -10.0,
+    "regime": "HIGH",
+    "legs": [
+      {
+        "type": "call",
+        "strike": 24500.0,
+        "expiry_weeks": 1,
+        "position": "SHORT",
+        "greeks": {
+          "price": 237.8,
+          "delta": 0.4909,
+          "gamma": 0.00064,
+          "theta": -22.91,
+          "vega": 12.5,
+          "vanna": 0.0969,
+          "charm": -1.6502
+        }
+      },
+      {
+        "type": "call",
+        "strike": 24600.0,
+        "expiry_weeks": 1,
+        "position": "LONG",
+        "greeks": {
+          "price": 192.95,
+          "delta": 0.4275,
+          "gamma": 0.00063,
+          "theta": -22.29,
+          "vega": 12.3,
+          "vanna": 0.4108,
+          "charm": -3.5305
+        }
+      }
+    ]
+  },
+  "trades": [],
+  "daily_signals": [
+    {
+      "date": "2026-03-06",
+      "action": "SHORT",
+      "price": 24450.44921875,
+      "vix": 19.88,
+      "ivr": 0.787,
+      "regime": "HIGH",
+      "strategy": "Short Call Spread (Bear Call)",
+      "net_delta": -3.17,
+      "net_theta": 31.0,
+      "composite_score": -0.869,
+      "conviction": "\ud83d\udd25 STRONG",
+      "timestamp": "2026-03-06T10:35:46.054711"
+    }
+  ],
+  "equity_curve": [
+    {
+      "date": "2026-03-06",
+      "equity": 1000000,
+      "price": 24450.44921875,
+      "regime": "HIGH"
+    },
+    {
+      "date": "2026-03-06",
+      "equity": 1000000,
+      "price": 24450.44921875,
+      "regime": "HIGH"
+    }
+  ],
+  "stats": {
+    "total_trades": 1,
+    "winning_trades": 0,
+    "total_pnl": 0.0
+  }
+}
