@@ -17,9 +17,9 @@ class MemoryEvoPilot:
     """
     EvoPilot wrapper that integrates DirectionalMemory.
     """
-    def __init__(self):
-        self.input_dim = 8
-        self.output_dim = 4
+    def __init__(self, input_dim: int = 8, output_dim: int = 4):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
         self.net = MultiClassEvoNet(self.input_dim, self.output_dim)
         self.pop_size = POP_SIZE
         

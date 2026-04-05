@@ -37,7 +37,7 @@ def validate_brain(brain_path: str):
         
     # Fetch validation data (out-of-sample: 2024 only)
     print("📊 Fetching Validation Data (2024)...")
-    fetcher = DataFetcher("BTC-USD", start_date="2024-01-01", end_date="2024-12-31", provider="yf")
+    fetcher = DataFetcher("^NSEI", start_date="2024-01-01", end_date="2024-12-31", provider="yf")
     df = fetcher.fetch_data()
     df = fetcher.process()
     print(f"✅ Loaded {len(df)} days of fresh data\n")

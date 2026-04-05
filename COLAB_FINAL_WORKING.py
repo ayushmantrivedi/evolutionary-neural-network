@@ -72,7 +72,7 @@ from train_memory_autopilot import MemoryEvoPilot
 print("✅ Modules loaded\n")
 
 # Configuration
-TICKER = "BTC-USD"
+TICKER = "^NSEI"
 START_DATE = "2018-01-01"
 END_DATE = "2024-01-01"
 WINDOW_SIZE = 20
@@ -94,9 +94,7 @@ env = FinancialRegimeEnv(df, frame_bound=(WINDOW_SIZE, safe_end), window_size=WI
 print(f"✅ Environment ready (frame: {WINDOW_SIZE} to {safe_end})\n")
 
 # Initialize pilot
-pilot = MemoryEvoPilot()
-pilot.input_dim = WINDOW_SIZE * 10
-pilot.output_dim = 3
+pilot = MemoryEvoPilot(input_dim=WINDOW_SIZE * 10, output_dim=3)
 print(f"✅ Pilot ready (population: {pilot.net.pop_size})\n")
 
 # Evaluation function
