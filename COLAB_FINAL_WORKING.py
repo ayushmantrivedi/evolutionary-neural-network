@@ -193,7 +193,7 @@ print("🎉 TRAINING COMPLETE!")
 print("="*80 + "\n")
 
 best_weights = pilot.get_flat_weights(best_ever_idx)
-pilot.set_flat_weights(best_weights, 0)
+pilot.set_flat_weights(0, best_weights)
 
 brain_file = "ultimate_brain_colab.pkl"
 with open(brain_file, 'wb') as f:
