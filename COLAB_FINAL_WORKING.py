@@ -107,11 +107,12 @@ def evaluate_genome(genome_idx: int) -> Tuple[float, float, float]:
     equity_curve = [1.0]
     returns = []
     terminated = False
+    truncated = False
     steps = 0
     
-    while not terminated and steps < 1000:
+    while not (terminated or truncated) and steps < 1000:
         action = pilot.get_action(state, genome_idx)
-        state, reward, terminated, _, _ = env.step(action)
+        state, reward, terminated, truncated, _ = env.step(action)
         equity *= np.exp(reward)
         equity_curve.append(equity)
         returns.append(reward)
