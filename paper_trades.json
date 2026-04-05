@@ -1,7 +1,7 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 973994.7354676116,
-  "current_position": 2,
+  "current_capital": 866463.3297117564,
+  "current_position": 0,
   "trades": [
     {
       "date": "2026-01-06",
@@ -66,6 +66,83 @@
       "to": "LONG",
       "price": 24450.44921875,
       "capital": 973994.7354676116
+    },
+    {
+      "date": "2026-03-09",
+      "from": "LONG",
+      "to": "SHORT",
+      "price": 24028.05078125,
+      "capital": 956486.5057930548
+    },
+    {
+      "date": "2026-03-18",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 23777.80078125,
+      "capital": 964785.4928554173
+    },
+    {
+      "date": "2026-03-19",
+      "from": "LONG",
+      "to": "SHORT",
+      "price": 23002.150390625,
+      "capital": 932638.0884126384
+    },
+    {
+      "date": "2026-03-20",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 23114.5,
+      "capital": 927429.9491740993
+    },
+    {
+      "date": "2026-03-23",
+      "from": "LONG",
+      "to": "SHORT",
+      "price": 22512.650390625,
+      "capital": 902632.5575660075
+    },
+    {
+      "date": "2026-03-26",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 23306.44921875,
+      "capital": 870746.9652252109
+    },
+    {
+      "date": "2026-03-27",
+      "from": "LONG",
+      "to": "SHORT",
+      "price": 22819.599609375,
+      "capital": 851948.3644722026
+    },
+    {
+      "date": "2026-03-30",
+      "from": "SHORT",
+      "to": "NEUTRAL",
+      "price": 22331.400390625,
+      "capital": 869578.4608999158
+    },
+    {
+      "date": "2026-04-01",
+      "from": "NEUTRAL",
+      "to": "SHORT",
+      "price": 22679.400390625,
+      "capital": 868969.7559772858
+    },
+    {
+      "date": "2026-04-02",
+      "from": "SHORT",
+      "to": "NEUTRAL",
+      "price": 22713.099609375,
+      "capital": 867070.2789069914
+    },
+    {
+      "date": "2026-04-03",
+      "from": "NEUTRAL",
+      "to": "SHORT",
+      "price": 22713.099609375,
+      "capital": 866463.3297117564
     }
   ],
   "daily_signals": [
@@ -618,6 +695,146 @@
       "action_name": "LONG",
       "price": 24450.44921875,
       "timestamp": "2026-03-06T10:50:39.623452"
+    },
+    {
+      "date": "2026-03-09",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24028.05078125,
+      "timestamp": "2026-03-09T10:57:29.915198"
+    },
+    {
+      "date": "2026-03-10",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24261.599609375,
+      "timestamp": "2026-03-10T10:55:38.386573"
+    },
+    {
+      "date": "2026-03-11",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23866.849609375,
+      "timestamp": "2026-03-11T10:55:20.077108"
+    },
+    {
+      "date": "2026-03-12",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23639.150390625,
+      "timestamp": "2026-03-12T10:54:50.485529"
+    },
+    {
+      "date": "2026-03-13",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23151.099609375,
+      "timestamp": "2026-03-13T10:51:44.895919"
+    },
+    {
+      "date": "2026-03-16",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23408.80078125,
+      "timestamp": "2026-03-16T11:06:50.166849"
+    },
+    {
+      "date": "2026-03-17",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23581.150390625,
+      "timestamp": "2026-03-17T11:02:13.356637"
+    },
+    {
+      "date": "2026-03-18",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23777.80078125,
+      "timestamp": "2026-03-18T11:02:49.057758"
+    },
+    {
+      "date": "2026-03-19",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23002.150390625,
+      "timestamp": "2026-03-19T10:56:12.768595"
+    },
+    {
+      "date": "2026-03-20",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23114.5,
+      "timestamp": "2026-03-20T10:52:42.997288"
+    },
+    {
+      "date": "2026-03-23",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 22512.650390625,
+      "timestamp": "2026-03-23T11:04:59.256809"
+    },
+    {
+      "date": "2026-03-24",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 22912.400390625,
+      "timestamp": "2026-03-24T11:02:42.195289"
+    },
+    {
+      "date": "2026-03-25",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23306.44921875,
+      "timestamp": "2026-03-25T11:00:30.852253"
+    },
+    {
+      "date": "2026-03-26",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23306.44921875,
+      "timestamp": "2026-03-26T11:07:37.123362"
+    },
+    {
+      "date": "2026-03-27",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 22819.599609375,
+      "timestamp": "2026-03-27T11:00:07.099033"
+    },
+    {
+      "date": "2026-03-30",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 22331.400390625,
+      "timestamp": "2026-03-30T11:13:21.096113"
+    },
+    {
+      "date": "2026-03-31",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 22331.400390625,
+      "timestamp": "2026-03-31T11:06:46.636435"
+    },
+    {
+      "date": "2026-04-01",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 22679.400390625,
+      "timestamp": "2026-04-01T11:10:08.891669"
+    },
+    {
+      "date": "2026-04-02",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 22713.099609375,
+      "timestamp": "2026-04-02T11:04:46.744019"
+    },
+    {
+      "date": "2026-04-03",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 22713.099609375,
+      "timestamp": "2026-04-03T10:57:29.615037"
     }
   ],
   "equity_curve": [
@@ -698,6 +915,126 @@
       "equity": 973994.7354676116,
       "position": "LONG",
       "price": 24450.44921875
+    },
+    {
+      "date": "2026-03-09",
+      "equity": 956486.5057930548,
+      "position": "SHORT",
+      "price": 24028.05078125
+    },
+    {
+      "date": "2026-03-10",
+      "equity": 947189.6092374815,
+      "position": "SHORT",
+      "price": 24261.599609375
+    },
+    {
+      "date": "2026-03-11",
+      "equity": 962600.9219401284,
+      "position": "SHORT",
+      "price": 23866.849609375
+    },
+    {
+      "date": "2026-03-12",
+      "equity": 971784.5168209417,
+      "position": "SHORT",
+      "price": 23639.150390625
+    },
+    {
+      "date": "2026-03-13",
+      "equity": 991847.8517887335,
+      "position": "SHORT",
+      "price": 23151.099609375
+    },
+    {
+      "date": "2026-03-16",
+      "equity": 980807.3242094667,
+      "position": "SHORT",
+      "price": 23408.80078125
+    },
+    {
+      "date": "2026-03-17",
+      "equity": 973586.0333462867,
+      "position": "SHORT",
+      "price": 23581.150390625
+    },
+    {
+      "date": "2026-03-18",
+      "equity": 964785.4928554173,
+      "position": "LONG",
+      "price": 23777.80078125
+    },
+    {
+      "date": "2026-03-19",
+      "equity": 932638.0884126384,
+      "position": "SHORT",
+      "price": 23002.150390625
+    },
+    {
+      "date": "2026-03-20",
+      "equity": 927429.9491740993,
+      "position": "LONG",
+      "price": 23114.5
+    },
+    {
+      "date": "2026-03-23",
+      "equity": 902632.5575660075,
+      "position": "SHORT",
+      "price": 22512.650390625
+    },
+    {
+      "date": "2026-03-24",
+      "equity": 886604.797234542,
+      "position": "SHORT",
+      "price": 22912.400390625
+    },
+    {
+      "date": "2026-03-25",
+      "equity": 871356.9150657569,
+      "position": "SHORT",
+      "price": 23306.44921875
+    },
+    {
+      "date": "2026-03-26",
+      "equity": 870746.9652252109,
+      "position": "LONG",
+      "price": 23306.44921875
+    },
+    {
+      "date": "2026-03-27",
+      "equity": 851948.3644722026,
+      "position": "SHORT",
+      "price": 22819.599609375
+    },
+    {
+      "date": "2026-03-30",
+      "equity": 869578.4608999158,
+      "position": "NEUTRAL",
+      "price": 22331.400390625
+    },
+    {
+      "date": "2026-03-31",
+      "equity": 869578.4608999158,
+      "position": "NEUTRAL",
+      "price": 22331.400390625
+    },
+    {
+      "date": "2026-04-01",
+      "equity": 868969.7559772858,
+      "position": "SHORT",
+      "price": 22679.400390625
+    },
+    {
+      "date": "2026-04-02",
+      "equity": 867070.2789069914,
+      "position": "NEUTRAL",
+      "price": 22713.099609375
+    },
+    {
+      "date": "2026-04-03",
+      "equity": 866463.3297117564,
+      "position": "SHORT",
+      "price": 22713.099609375
     }
   ]
 }
