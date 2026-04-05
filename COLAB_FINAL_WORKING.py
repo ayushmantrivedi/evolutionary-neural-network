@@ -51,6 +51,8 @@ if not os.path.exists('/content/evolutionary-neural-network'):
         'git', 'clone',
         'https://github.com/ayushmantrivedi/evolutionary-neural-network.git'
     ], check=True)
+else:
+    subprocess.run(['git', 'pull'], cwd='/content/evolutionary-neural-network', check=True)
 
 os.chdir('/content/evolutionary-neural-network')
 sys.path.insert(0, '/content/evolutionary-neural-network')
