@@ -103,6 +103,8 @@ def trigger_recovery(pain_dates):
         
         if process.returncode == 0:
             print("\n  [SUCCESS] AI Recovery complete. New brain promoted.")
+            print("  [INFO] Extracting weights for cloud deployment...")
+            subprocess.run([sys.executable, os.path.join(ROOT_DIR, "extract_brain.py")])
             return True
         else:
             print(f"\n  [FAILURE] Recovery script exited with code {process.returncode}")

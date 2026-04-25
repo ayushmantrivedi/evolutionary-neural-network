@@ -1,12 +1,7 @@
 {
   "initial_capital": 1000000,
-<<<<<<< HEAD
-  "current_capital": 871289.63,
-  "current_position": 2,
-=======
   "current_capital": 772882.4054267708,
   "current_position": 1,
->>>>>>> 9f930a6b1c49cedb06a6c9f091e0c4c3f8d0de0e
   "trades": [
     {
       "date": "2025-12-26",
@@ -15,8 +10,6 @@
       "price": 26042.30078125,
       "cost": 1000.0,
       "capital_before": 999000.0
-<<<<<<< HEAD
-=======
     },
     {
       "date": "2026-02-23",
@@ -227,7 +220,6 @@
       "to": "NEUTRAL",
       "price": 23897.94921875,
       "capital": 772882.4054267708
->>>>>>> 9f930a6b1c49cedb06a6c9f091e0c4c3f8d0de0e
     }
   ],
   "daily_signals": [
@@ -1260,21 +1252,6 @@
       "action": 2,
       "action_name": "LONG",
       "price": 22713.099609375,
-<<<<<<< HEAD
-      "confidence": 0.7,
-      "features": {
-        "close": 22713.1,
-        "log_ret": 0.0015,
-        "adx": 0.4109,
-        "macd_hist": -1.0,
-        "bb_pct": 0.2429,
-        "atr_pct": 0.0206
-      },
-      "timestamp": "2026-04-05T15:48:03.286478"
-    }
-  ],
-  "equity_curve": []
-=======
       "timestamp": "2026-04-02T11:04:46.744019"
     },
     {
@@ -1680,5 +1657,4 @@
       "price": 23897.94921875
     }
   ]
->>>>>>> 9f930a6b1c49cedb06a6c9f091e0c4c3f8d0de0e
 }

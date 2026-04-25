@@ -9,9 +9,10 @@ sys.path.insert(0, '.')
 
 # Load the full brain (requires evonet, works locally)
 print("Loading brain...")
-with open('brain_versions/ultimate_brain_colab.pkl', 'rb') as f:
+BRAIN_FILE = 'nifty50_brain_validated.pkl'
+with open(BRAIN_FILE, 'rb') as f:
     brain = pickle.load(f)
-print(f"Loaded: {type(brain).__name__}  pop_size={brain.pop_size}")
+print(f"Loaded: {BRAIN_FILE}  pop_size={brain.pop_size}")
 
 # The Hall of Fame best genome is always stored at index 0
 # (the evolve() method always injects hof into pilot 0)

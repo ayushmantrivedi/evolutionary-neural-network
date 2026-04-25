@@ -288,7 +288,20 @@ def main():
     log          = load_log()
     prev_action  = log.get("current_position", 1)
     price        = float(df.iloc[-1]["Close"])
-    action       = get_signal(brain, df, prev_action)
+    
+    # --- SAFETY PROTOCOL: Stop Loss for the Brain ---
+    cap = log["current_capital"]
+    initial_cap = log["initial_capital"]
+    drawdown = (initial_cap - cap) / initial_cap
+    
+    if drawdown > 0.10:
+        print(f"      [SAFETY] Drawdown {drawdown:.1%} exceeds limit. Neutralizing.")
+        action = 1 # Force Neutral
+        msg_prefix = "⚠️ <b>SAFETY OVERRIDE ACTIVE</b>\n"
+    else:
+        action = get_signal(brain, df, prev_action)
+        msg_prefix = ""
+
     print(f"      Signal: {ACTION_NAMES[action]}  @  ₹{price:,.2f}")
 
     # 5. Update log, save, notify
@@ -298,7 +311,14 @@ def main():
     pnl = ((log["current_capital"] / log["initial_capital"]) - 1) * 100
     print(f"      Capital: ₹{log['current_capital']:,.2f}  P&L: {pnl:+.2f}%")
 
-    send_telegram(build_message(log, action, price, today))
+    msg = build_message(log, action, price, today)
+    if msg_prefix:
+        msg = msg_prefix + msg
+    
+    if drawdown > 0.05:
+        msg += "\n\n🚨 <b>WATCHDOG:</b> Performance issues detected. Run recovery locally."
+
+    send_telegram(msg)
 
     print(f"\n{'─'*60}")
     print(f"  SIGNAL:  {ACTION_NAMES[action]}")
