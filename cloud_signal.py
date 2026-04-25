@@ -219,18 +219,67 @@ def bah_pnl(log):
     s = log.get("daily_signals", [])
     if len(s) < 2:
         return 0.0
-    return ((s[-1]["price"] / s[0]["price"]) - 1) * 100
+    try:
+        return ((float(s[-1]["price"]) / float(s[0]["price"])) - 1) * 100
+    except:
+        return 0.0
 
-def build_message(log, action, price, today):
+def get_market_regime(df: pd.DataFrame) -> str:
+    """Analyze indicators to determine what is currently dominating the NIFTY50."""
+    latest = df.iloc[-1]
+    
+    adx = latest.get("ADX", 0) * 100
+    atr_pct = latest.get("ATR_Pct", 0) * 100
+    rsi = latest.get("RSI", 50)
+    macd = latest.get("MACD_Hist", 0)
+    dist_200 = latest.get("Distance_SMA200", 0) * 100
+    
+    insights = []
+    
+    # 1. Trend vs Chop
+    if adx > 25:
+        trend = "Strongly Trending" if dist_200 > 0 else "Strongly Down-trending"
+        insights.append(f"📈 <b>Dominance:</b> {trend} (ADX: {adx:.1f})")
+    elif adx < 15:
+        insights.append("↔️ <b>Dominance:</b> Range-bound / Choppy")
+        
+    # 2. Volatility
+    if atr_pct > 1.5:
+        insights.append("⚠️ <b>Fear Factor:</b> High Volatility is dominating.")
+        
+    # 3. Momentum
+    if macd > 0.5:
+        insights.append("🚀 <b>Momentum:</b> Bulls are in control.")
+    elif macd < -0.5:
+        insights.append("📉 <b>Momentum:</b> Bears are in control.")
+        
+    # 4. Overextended
+    if rsi > 70:
+        insights.append("🔥 <b>Alert:</b> Market is Overbought.")
+    elif rsi < 30:
+        insights.append("🧊 <b>Alert:</b> Market is Oversold.")
+
+    if not insights:
+        return "⚖️ <b>Dominance:</b> Neutral / Equilibrium"
+        
+    return "\n".join(insights)
+
+def build_message(log, action, price, today, drawdown, df=None):
     cap     = log["current_capital"]
     pnl_pct = ((cap / log["initial_capital"]) - 1) * 100
     pnl_rs  = cap - log["initial_capital"]
     edge    = pnl_pct - bah_pnl(log)
     streak  = sum(1 for s in reversed(log["daily_signals"]) if s["action"] == action)
 
-    return "\n".join([
+    # Health status
+    health = "🟢 STABLE"
+    if drawdown > 0.05: health = "🟡 RECOVERY NEEDED"
+    if drawdown > 0.10: health = "🔴 SAFETY OVERRIDE"
+
+    msg_lines = [
         "🧠 <b>EVOTRADER AI — DAILY SIGNAL</b>",
         f"📅 <b>Date:</b> {today}",
+        f"🏥 <b>Health:</b> {health}",
         "",
         f"  Signal:  <b>{ACTION_EMOJI[action]}</b>",
         f"  Action:  {ACTION_TEXT[action]}",
@@ -242,10 +291,22 @@ def build_message(log, action, price, today):
         f"  vs B&amp;H :  {edge:>+.2f}% edge",
         "",
         f"📊 Days: {len(log['daily_signals'])}  ·  Trades: {len(log['trades'])}  ·  Streak: {streak}d",
-        "",
-        f"<i>Next signal after market close tomorrow (3:37 PM IST)</i>",
-        f"<i>EvoTrader AI v1.1 · github.com/ayushmantrivedi</i>",
-    ])
+    ]
+
+    # Weekend Insight (Friday)
+    if df is not None:
+        try:
+            dt_obj = datetime.datetime.fromisoformat(today)
+            if dt_obj.weekday() == 4: # Friday
+                msg_lines.append("\n🏛️ <b>WEEKEND MARKET INSIGHT</b>")
+                msg_lines.append(get_market_regime(df))
+        except:
+            pass
+
+    msg_lines.append("\n<i>Next signal after market close tomorrow (3:37 PM IST)</i>")
+    msg_lines.append("<i>EvoTrader AI v1.1 · github.com/ayushmantrivedi</i>")
+    
+    return "\n".join(msg_lines)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -311,7 +372,7 @@ def main():
     pnl = ((log["current_capital"] / log["initial_capital"]) - 1) * 100
     print(f"      Capital: ₹{log['current_capital']:,.2f}  P&L: {pnl:+.2f}%")
 
-    msg = build_message(log, action, price, today)
+    msg = build_message(log, action, price, today, drawdown, df)
     if msg_prefix:
         msg = msg_prefix + msg
     

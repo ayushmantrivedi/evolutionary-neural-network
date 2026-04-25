@@ -51,7 +51,8 @@ jobs:
         env:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python cloud_signal.py
+        run: |
+          python cloud_signal.py
 
       # 5. Commit the updated paper_trades.json back to the repo
       #    This persists the trade log across runs (GitHub is our "database")
