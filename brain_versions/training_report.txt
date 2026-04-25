@@ -1,0 +1,30 @@
+ULTIMATE BRAIN TRAINING REPORT
+================================================================================
+
+Dataset: ^NSEI (2018-01-01 to 2024-01-01)
+Generations: 200
+Population: 50
+Best Fitness: 7.078
+
+FINAL 20 GENERATIONS:
+--------------------------------------------------------------------------------
+Gen 181: Fit=  7.065, Sortino= 11.74, DD= 4.8%
+Gen 182: Fit=  7.070, Sortino= 11.75, DD= 4.8%
+Gen 183: Fit=  7.072, Sortino= 11.75, DD= 4.8%
+Gen 184: Fit=  7.071, Sortino= 11.75, DD= 4.8%
+Gen 185: Fit=  7.071, Sortino= 11.75, DD= 4.8%
+Gen 186: Fit=  7.072, Sortino= 11.75, DD= 4.8%
+Gen 187: Fit=  7.074, Sortino= 11.76, DD= 4.8%
+Gen 188: Fit=  7.074, Sortino= 11.76, DD= 4.8%
+Gen 189: Fit=  7.076, Sortino= 11.76, DD= 4.8%
+Gen 190: Fit=  7.075, Sortino= 11.76, DD= 4.8%
+Gen 191: Fit=  7.078, Sortino= 11.76, DD= 4.8%
+Gen 192: Fit=  7.077, Sortino= 11.76, DD= 4.8%
+Gen 193: Fit=  7.073, Sortino= 11.76, DD= 4.8%
+Gen 194: Fit=  7.076, Sortino= 11.76, DD= 4.8%
+Gen 195: Fit=  7.073, Sortino= 11.76, DD= 4.8%
+Gen 196: Fit=  7.074, Sortino= 11.76, DD= 4.8%
+Gen 197: Fit=  7.075, Sortino= 11.76, DD= 4.8%
+Gen 198: Fit=  7.073, Sortino= 11.76, DD= 4.8%
+Gen 199: Fit=  7.078, Sortino= 11.76, DD= 4.8%
+Gen 200: Fit=  7.073, Sortino= 11.76, DD= 4.8%

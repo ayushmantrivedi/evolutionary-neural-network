@@ -1,151 +1,130 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 866463.3297117564,
-  "current_position": 0,
+  "current_capital": 871289.63,
+  "current_position": 2,
   "trades": [
     {
-      "date": "2026-01-06",
+      "date": "2025-12-26",
       "from": "NEUTRAL",
       "to": "LONG",
-      "price": 26178.69921875,
+      "price": 26042.30078125,
       "cost": 1000.0,
       "capital_before": 999000.0
-    },
-    {
-      "date": "2026-02-23",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 25713.0,
-      "capital": 980541.6842845514
-    },
-    {
-      "date": "2026-02-24",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 25424.650390625,
-      "capital": 968188.8473033819
-    },
-    {
-      "date": "2026-02-25",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 25482.5,
-      "capital": 969714.0695563368
-    },
-    {
-      "date": "2026-02-26",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 25496.55078125,
-      "capital": 968500.5796157654
-    },
-    {
-      "date": "2026-02-27",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 25178.650390625,
-      "capital": 955747.0070907158
-    },
-    {
-      "date": "2026-03-02",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 24865.69921875,
-      "capital": 966957.181094433
-    },
-    {
-      "date": "2026-03-05",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 24765.900390625,
-      "capital": 962409.90055284
-    },
-    {
-      "date": "2026-03-06",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 24450.44921875,
-      "capital": 973994.7354676116
-    },
-    {
-      "date": "2026-03-09",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 24028.05078125,
-      "capital": 956486.5057930548
-    },
-    {
-      "date": "2026-03-18",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 23777.80078125,
-      "capital": 964785.4928554173
-    },
-    {
-      "date": "2026-03-19",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 23002.150390625,
-      "capital": 932638.0884126384
-    },
-    {
-      "date": "2026-03-20",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 23114.5,
-      "capital": 927429.9491740993
-    },
-    {
-      "date": "2026-03-23",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 22512.650390625,
-      "capital": 902632.5575660075
-    },
-    {
-      "date": "2026-03-26",
-      "from": "SHORT",
-      "to": "LONG",
-      "price": 23306.44921875,
-      "capital": 870746.9652252109
-    },
-    {
-      "date": "2026-03-27",
-      "from": "LONG",
-      "to": "SHORT",
-      "price": 22819.599609375,
-      "capital": 851948.3644722026
-    },
-    {
-      "date": "2026-03-30",
-      "from": "SHORT",
-      "to": "NEUTRAL",
-      "price": 22331.400390625,
-      "capital": 869578.4608999158
-    },
-    {
-      "date": "2026-04-01",
-      "from": "NEUTRAL",
-      "to": "SHORT",
-      "price": 22679.400390625,
-      "capital": 868969.7559772858
-    },
-    {
-      "date": "2026-04-02",
-      "from": "SHORT",
-      "to": "NEUTRAL",
-      "price": 22713.099609375,
-      "capital": 867070.2789069914
-    },
-    {
-      "date": "2026-04-03",
-      "from": "NEUTRAL",
-      "to": "SHORT",
-      "price": 22713.099609375,
-      "capital": 866463.3297117564
     }
   ],
   "daily_signals": [
+    {
+      "date": "2025-12-26",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26042.30078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 26042.3,
+        "log_ret": -0.0038,
+        "adx": 0.1166,
+        "macd_hist": 0.9999,
+        "bb_pct": 0.5623,
+        "atr_pct": 0.0069
+      },
+      "timestamp": "2026-04-05T15:48:03.136238"
+    },
+    {
+      "date": "2025-12-29",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25942.099609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25942.1,
+        "log_ret": -0.0039,
+        "adx": 0.1121,
+        "macd_hist": -0.9997,
+        "bb_pct": 0.4029,
+        "atr_pct": 0.0069
+      },
+      "timestamp": "2026-04-05T15:48:03.139104"
+    },
+    {
+      "date": "2025-12-30",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25938.849609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25938.85,
+        "log_ret": -0.0001,
+        "adx": 0.1105,
+        "macd_hist": -1.0,
+        "bb_pct": 0.4148,
+        "atr_pct": 0.0067
+      },
+      "timestamp": "2026-04-05T15:48:03.141029"
+    },
+    {
+      "date": "2025-12-31",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26129.599609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 26129.6,
+        "log_ret": 0.0073,
+        "adx": 0.1094,
+        "macd_hist": -0.9808,
+        "bb_pct": 0.7717,
+        "atr_pct": 0.0069
+      },
+      "timestamp": "2026-04-05T15:48:03.144052"
+    },
+    {
+      "date": "2026-01-01",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26146.55078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 26146.55,
+        "log_ret": 0.0006,
+        "adx": 0.1088,
+        "macd_hist": 0.9989,
+        "bb_pct": 0.7787,
+        "atr_pct": 0.0066
+      },
+      "timestamp": "2026-04-05T15:48:03.146470"
+    },
+    {
+      "date": "2026-01-02",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26328.55078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 26328.55,
+        "log_ret": 0.0069,
+        "adx": 0.1158,
+        "macd_hist": 1.0,
+        "bb_pct": 1.0143,
+        "atr_pct": 0.0067
+      },
+      "timestamp": "2026-04-05T15:48:03.148557"
+    },
+    {
+      "date": "2026-01-05",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 26250.30078125,
+      "confidence": 0.7,
+      "features": {
+        "close": 26250.3,
+        "log_ret": -0.003,
+        "adx": 0.1238,
+        "macd_hist": 1.0,
+        "bb_pct": 0.8722,
+        "atr_pct": 0.0067
+      },
+      "timestamp": "2026-04-05T15:48:03.151074"
+    },
     {
       "date": "2026-01-06",
       "action": 2,
@@ -155,12 +134,12 @@
       "features": {
         "close": 26178.7,
         "log_ret": -0.0027,
-        "adx": 0.1202,
+        "adx": 0.1249,
         "macd_hist": 1.0,
         "bb_pct": 0.7373,
         "atr_pct": 0.0066
       },
-      "timestamp": "2026-02-18T17:03:39.655953"
+      "timestamp": "2026-04-05T15:48:03.153716"
     },
     {
       "date": "2026-01-07",
@@ -171,12 +150,12 @@
       "features": {
         "close": 26140.75,
         "log_ret": -0.0015,
-        "adx": 0.1173,
+        "adx": 0.1219,
         "macd_hist": 1.0,
         "bb_pct": 0.66,
         "atr_pct": 0.0065
       },
-      "timestamp": "2026-02-18T17:03:39.655953"
+      "timestamp": "2026-04-05T15:48:03.155912"
     },
     {
       "date": "2026-01-08",
@@ -187,12 +166,12 @@
       "features": {
         "close": 25876.85,
         "log_ret": -0.0101,
-        "adx": 0.1158,
+        "adx": 0.12,
         "macd_hist": -1.0,
         "bb_pct": 0.2194,
         "atr_pct": 0.0069
       },
-      "timestamp": "2026-02-18T17:03:39.661446"
+      "timestamp": "2026-04-05T15:48:03.157972"
     },
     {
       "date": "2026-01-09",
@@ -203,12 +182,12 @@
       "features": {
         "close": 25683.3,
         "log_ret": -0.0075,
-        "adx": 0.1252,
+        "adx": 0.1289,
         "macd_hist": -1.0,
         "bb_pct": -0.0236,
         "atr_pct": 0.0073
       },
-      "timestamp": "2026-02-18T17:03:39.662355"
+      "timestamp": "2026-04-05T15:48:03.160387"
     },
     {
       "date": "2026-01-12",
@@ -219,12 +198,12 @@
       "features": {
         "close": 25790.25,
         "log_ret": 0.0042,
-        "adx": 0.1393,
+        "adx": 0.1427,
         "macd_hist": -1.0,
         "bb_pct": 0.172,
         "atr_pct": 0.0077
       },
-      "timestamp": "2026-02-18T17:03:39.666284"
+      "timestamp": "2026-04-05T15:48:03.163088"
     },
     {
       "date": "2026-01-13",
@@ -235,12 +214,12 @@
       "features": {
         "close": 25732.3,
         "log_ret": -0.0022,
-        "adx": 0.1468,
+        "adx": 0.1498,
         "macd_hist": -1.0,
         "bb_pct": 0.1344,
         "atr_pct": 0.008
       },
-      "timestamp": "2026-02-18T17:03:39.668609"
+      "timestamp": "2026-04-05T15:48:03.165138"
     },
     {
       "date": "2026-01-14",
@@ -251,12 +230,12 @@
       "features": {
         "close": 25665.6,
         "log_ret": -0.0026,
-        "adx": 0.1537,
+        "adx": 0.1565,
         "macd_hist": -1.0,
         "bb_pct": 0.0863,
         "atr_pct": 0.008
       },
-      "timestamp": "2026-02-18T17:03:39.668609"
+      "timestamp": "2026-04-05T15:48:03.166847"
     },
     {
       "date": "2026-01-16",
@@ -267,12 +246,12 @@
       "features": {
         "close": 25694.35,
         "log_ret": 0.0011,
-        "adx": 0.1547,
+        "adx": 0.1572,
         "macd_hist": -1.0,
         "bb_pct": 0.1435,
         "atr_pct": 0.008
       },
-      "timestamp": "2026-02-18T17:03:39.672737"
+      "timestamp": "2026-04-05T15:48:03.169528"
     },
     {
       "date": "2026-01-19",
@@ -283,12 +262,12 @@
       "features": {
         "close": 25585.5,
         "log_ret": -0.0042,
-        "adx": 0.1628,
+        "adx": 0.165,
         "macd_hist": -1.0,
         "bb_pct": 0.0602,
         "atr_pct": 0.008
       },
-      "timestamp": "2026-02-18T17:03:39.675202"
+      "timestamp": "2026-04-05T15:48:03.171567"
     },
     {
       "date": "2026-01-20",
@@ -299,12 +278,12 @@
       "features": {
         "close": 25232.5,
         "log_ret": -0.0139,
-        "adx": 0.1806,
+        "adx": 0.1826,
         "macd_hist": -1.0,
         "bb_pct": -0.1356,
         "atr_pct": 0.0087
       },
-      "timestamp": "2026-02-18T17:03:39.676356"
+      "timestamp": "2026-04-05T15:48:03.174270"
     },
     {
       "date": "2026-01-21",
@@ -315,12 +294,12 @@
       "features": {
         "close": 25157.5,
         "log_ret": -0.003,
-        "adx": 0.2032,
+        "adx": 0.205,
         "macd_hist": -1.0,
         "bb_pct": -0.0667,
         "atr_pct": 0.0092
       },
-      "timestamp": "2026-02-18T17:03:39.676356"
+      "timestamp": "2026-04-05T15:48:03.176368"
     },
     {
       "date": "2026-01-22",
@@ -331,12 +310,12 @@
       "features": {
         "close": 25289.9,
         "log_ret": 0.0052,
-        "adx": 0.216,
+        "adx": 0.2176,
         "macd_hist": -1.0,
         "bb_pct": 0.0937,
         "atr_pct": 0.0093
       },
-      "timestamp": "2026-02-18T17:03:39.681861"
+      "timestamp": "2026-04-05T15:48:03.177888"
     },
     {
       "date": "2026-01-23",
@@ -347,12 +326,12 @@
       "features": {
         "close": 25048.65,
         "log_ret": -0.0096,
-        "adx": 0.2314,
+        "adx": 0.2329,
         "macd_hist": -1.0,
         "bb_pct": 0.009,
         "atr_pct": 0.0096
       },
-      "timestamp": "2026-02-18T17:03:39.683753"
+      "timestamp": "2026-04-05T15:48:03.180835"
     },
     {
       "date": "2026-01-27",
@@ -363,12 +342,12 @@
       "features": {
         "close": 25175.4,
         "log_ret": 0.005,
-        "adx": 0.2479,
+        "adx": 0.2492,
         "macd_hist": -1.0,
         "bb_pct": 0.1393,
         "atr_pct": 0.0098
       },
-      "timestamp": "2026-02-18T17:03:39.683753"
+      "timestamp": "2026-04-05T15:48:03.182984"
     },
     {
       "date": "2026-01-28",
@@ -379,12 +358,12 @@
       "features": {
         "close": 25342.75,
         "log_ret": 0.0066,
-        "adx": 0.2557,
+        "adx": 0.2569,
         "macd_hist": -1.0,
         "bb_pct": 0.2676,
         "atr_pct": 0.0096
       },
-      "timestamp": "2026-02-18T17:03:39.689090"
+      "timestamp": "2026-04-05T15:48:03.185022"
     },
     {
       "date": "2026-01-29",
@@ -395,12 +374,12 @@
       "features": {
         "close": 25418.9,
         "log_ret": 0.003,
-        "adx": 0.2581,
+        "adx": 0.2592,
         "macd_hist": -1.0,
         "bb_pct": 0.3314,
         "atr_pct": 0.0097
       },
-      "timestamp": "2026-02-18T17:03:39.691200"
+      "timestamp": "2026-04-05T15:48:03.186621"
     },
     {
       "date": "2026-01-30",
@@ -411,12 +390,12 @@
       "features": {
         "close": 25320.65,
         "log_ret": -0.0039,
-        "adx": 0.2603,
+        "adx": 0.2613,
         "macd_hist": -1.0,
         "bb_pct": 0.2931,
         "atr_pct": 0.0096
       },
-      "timestamp": "2026-02-18T17:03:39.692320"
+      "timestamp": "2026-04-05T15:48:03.189421"
     },
     {
       "date": "2026-02-02",
@@ -427,12 +406,12 @@
       "features": {
         "close": 25088.4,
         "log_ret": -0.0092,
-        "adx": 0.2759,
+        "adx": 0.2768,
         "macd_hist": -1.0,
         "bb_pct": 0.1824,
         "atr_pct": 0.0108
       },
-      "timestamp": "2026-02-18T17:03:39.694406"
+      "timestamp": "2026-04-05T15:48:03.191460"
     },
     {
       "date": "2026-02-03",
@@ -443,12 +422,12 @@
       "features": {
         "close": 25727.55,
         "log_ret": 0.0252,
-        "adx": 0.264,
+        "adx": 0.2649,
         "macd_hist": 1.0,
         "bb_pct": 0.6075,
         "atr_pct": 0.0133
       },
-      "timestamp": "2026-02-18T17:03:39.698252"
+      "timestamp": "2026-04-05T15:48:03.193988"
     },
     {
       "date": "2026-02-04",
@@ -459,12 +438,12 @@
       "features": {
         "close": 25776.0,
         "log_ret": 0.0019,
-        "adx": 0.2509,
+        "adx": 0.2517,
         "macd_hist": 1.0,
         "bb_pct": 0.672,
         "atr_pct": 0.013
       },
-      "timestamp": "2026-02-18T17:03:39.699369"
+      "timestamp": "2026-04-05T15:48:03.196343"
     },
     {
       "date": "2026-02-05",
@@ -475,12 +454,12 @@
       "features": {
         "close": 25642.8,
         "log_ret": -0.0052,
-        "adx": 0.2387,
+        "adx": 0.2395,
         "macd_hist": 1.0,
         "bb_pct": 0.6027,
         "atr_pct": 0.0127
       },
-      "timestamp": "2026-02-18T17:03:39.702046"
+      "timestamp": "2026-04-05T15:48:03.198891"
     },
     {
       "date": "2026-02-06",
@@ -491,12 +470,12 @@
       "features": {
         "close": 25693.7,
         "log_ret": 0.002,
-        "adx": 0.2248,
+        "adx": 0.2256,
         "macd_hist": 1.0,
         "bb_pct": 0.6846,
         "atr_pct": 0.0124
       },
-      "timestamp": "2026-02-18T17:03:39.703686"
+      "timestamp": "2026-04-05T15:48:03.200910"
     },
     {
       "date": "2026-02-09",
@@ -507,12 +486,12 @@
       "features": {
         "close": 25867.3,
         "log_ret": 0.0067,
-        "adx": 0.2175,
+        "adx": 0.2183,
         "macd_hist": 1.0,
         "bb_pct": 0.8489,
         "atr_pct": 0.012
       },
-      "timestamp": "2026-02-18T17:03:39.706419"
+      "timestamp": "2026-04-05T15:48:03.203752"
     },
     {
       "date": "2026-02-10",
@@ -523,12 +502,12 @@
       "features": {
         "close": 25935.15,
         "log_ret": 0.0026,
-        "adx": 0.2124,
+        "adx": 0.2131,
         "macd_hist": 1.0,
         "bb_pct": 0.8797,
         "atr_pct": 0.0115
       },
-      "timestamp": "2026-02-18T17:03:39.706419"
+      "timestamp": "2026-04-05T15:48:03.205797"
     },
     {
       "date": "2026-02-11",
@@ -539,12 +518,12 @@
       "features": {
         "close": 25953.85,
         "log_ret": 0.0007,
-        "adx": 0.2082,
+        "adx": 0.2088,
         "macd_hist": 1.0,
         "bb_pct": 0.8746,
         "atr_pct": 0.011
       },
-      "timestamp": "2026-02-18T17:03:39.706419"
+      "timestamp": "2026-04-05T15:48:03.208575"
     },
     {
       "date": "2026-02-12",
@@ -555,12 +534,12 @@
       "features": {
         "close": 25807.2,
         "log_ret": -0.0057,
-        "adx": 0.1991,
+        "adx": 0.1997,
         "macd_hist": 1.0,
         "bb_pct": 0.7427,
         "atr_pct": 0.0108
       },
-      "timestamp": "2026-02-18T17:03:39.715390"
+      "timestamp": "2026-04-05T15:48:03.211295"
     },
     {
       "date": "2026-02-13",
@@ -571,12 +550,12 @@
       "features": {
         "close": 25471.1,
         "log_ret": -0.0131,
-        "adx": 0.1886,
+        "adx": 0.1892,
         "macd_hist": 1.0,
         "bb_pct": 0.4655,
         "atr_pct": 0.0112
       },
-      "timestamp": "2026-02-18T17:03:39.717778"
+      "timestamp": "2026-04-05T15:48:03.213813"
     },
     {
       "date": "2026-02-16",
@@ -587,12 +566,12 @@
       "features": {
         "close": 25682.75,
         "log_ret": 0.0083,
-        "adx": 0.1809,
+        "adx": 0.1814,
         "macd_hist": 1.0,
         "bb_pct": 0.6469,
         "atr_pct": 0.0112
       },
-      "timestamp": "2026-02-18T17:03:39.719480"
+      "timestamp": "2026-04-05T15:48:03.215494"
     },
     {
       "date": "2026-02-17",
@@ -603,12 +582,12 @@
       "features": {
         "close": 25725.4,
         "log_ret": 0.0017,
-        "adx": 0.1715,
+        "adx": 0.1719,
         "macd_hist": 1.0,
         "bb_pct": 0.6753,
         "atr_pct": 0.0109
       },
-      "timestamp": "2026-02-18T17:03:39.723256"
+      "timestamp": "2026-04-05T15:48:03.217510"
     },
     {
       "date": "2026-02-18",
@@ -619,422 +598,461 @@
       "features": {
         "close": 25819.35,
         "log_ret": 0.0036,
-        "adx": 0.1605,
+        "adx": 0.1609,
         "macd_hist": 1.0,
         "bb_pct": 0.7304,
         "atr_pct": 0.0106
       },
-      "timestamp": "2026-02-18T17:03:39.725262"
+      "timestamp": "2026-04-05T15:48:03.217510"
+    },
+    {
+      "date": "2026-02-19",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25454.349609375,
+      "confidence": 0.7,
+      "features": {
+        "close": 25454.35,
+        "log_ret": -0.0142,
+        "adx": 0.1586,
+        "macd_hist": 1.0,
+        "bb_pct": 0.4044,
+        "atr_pct": 0.0114
+      },
+      "timestamp": "2026-04-05T15:48:03.223678"
+    },
+    {
+      "date": "2026-02-20",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 25571.25,
+      "confidence": 0.7,
+      "features": {
+        "close": 25571.25,
+        "log_ret": 0.0046,
+        "adx": 0.1567,
+        "macd_hist": 0.9941,
+        "bb_pct": 0.4956,
+        "atr_pct": 0.0113
+      },
+      "timestamp": "2026-04-05T15:48:03.225764"
     },
     {
       "date": "2026-02-23",
       "action": 2,
       "action_name": "LONG",
       "price": 25713.0,
-      "timestamp": "2026-02-23T17:10:46.447986"
+      "confidence": 0.7,
+      "features": {
+        "close": 25713.0,
+        "log_ret": 0.0055,
+        "adx": 0.1507,
+        "macd_hist": 1.0,
+        "bb_pct": 0.6054,
+        "atr_pct": 0.011
+      },
+      "timestamp": "2026-04-05T15:48:03.228285"
     },
     {
       "date": "2026-02-24",
       "action": 2,
       "action_name": "LONG",
       "price": 25424.650390625,
-      "timestamp": "2026-02-24T11:00:49.597467"
+      "confidence": 0.7,
+      "features": {
+        "close": 25424.65,
+        "log_ret": -0.0113,
+        "adx": 0.1536,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2843,
+        "atr_pct": 0.0114
+      },
+      "timestamp": "2026-04-05T15:48:03.230923"
     },
     {
       "date": "2026-02-25",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 25482.5,
-      "timestamp": "2026-02-25T11:02:27.786491"
+      "confidence": 0.7,
+      "features": {
+        "close": 25482.5,
+        "log_ret": 0.0023,
+        "adx": 0.1558,
+        "macd_hist": -1.0,
+        "bb_pct": 0.3349,
+        "atr_pct": 0.0112
+      },
+      "timestamp": "2026-04-05T15:48:03.232511"
     },
     {
       "date": "2026-02-26",
       "action": 2,
       "action_name": "LONG",
       "price": 25496.55078125,
-      "timestamp": "2026-02-26T10:59:00.311524"
+      "confidence": 0.7,
+      "features": {
+        "close": 25496.55,
+        "log_ret": 0.0006,
+        "adx": 0.1587,
+        "macd_hist": -1.0,
+        "bb_pct": 0.3441,
+        "atr_pct": 0.0109
+      },
+      "timestamp": "2026-04-05T15:48:03.235560"
     },
     {
       "date": "2026-02-27",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 25178.650390625,
-      "timestamp": "2026-02-27T10:53:14.171847"
+      "confidence": 0.7,
+      "features": {
+        "close": 25178.65,
+        "log_ret": -0.0125,
+        "adx": 0.1685,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0162,
+        "atr_pct": 0.0112
+      },
+      "timestamp": "2026-04-05T15:48:03.236074"
     },
     {
       "date": "2026-03-02",
       "action": 2,
       "action_name": "LONG",
       "price": 24865.69921875,
-      "timestamp": "2026-03-02T10:56:32.531473"
-    },
-    {
-      "date": "2026-03-03",
-      "action": 2,
-      "action_name": "LONG",
-      "price": 24865.69921875,
-      "timestamp": "2026-03-03T10:55:08.288935"
+      "confidence": 0.7,
+      "features": {
+        "close": 24865.7,
+        "log_ret": -0.0125,
+        "adx": 0.1886,
+        "macd_hist": -1.0,
+        "bb_pct": -0.2157,
+        "atr_pct": 0.0122
+      },
+      "timestamp": "2026-04-05T15:48:03.236074"
     },
     {
       "date": "2026-03-04",
       "action": 2,
       "action_name": "LONG",
       "price": 24480.5,
-      "timestamp": "2026-03-04T10:51:42.095367"
+      "confidence": 0.7,
+      "features": {
+        "close": 24480.5,
+        "log_ret": -0.0156,
+        "adx": 0.2118,
+        "macd_hist": -1.0,
+        "bb_pct": -0.2393,
+        "atr_pct": 0.0132
+      },
+      "timestamp": "2026-04-05T15:48:03.236074"
     },
     {
       "date": "2026-03-05",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 24765.900390625,
-      "timestamp": "2026-03-05T10:55:43.555033"
+      "confidence": 0.7,
+      "features": {
+        "close": 24765.9,
+        "log_ret": 0.0116,
+        "adx": 0.2231,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0381,
+        "atr_pct": 0.0132
+      },
+      "timestamp": "2026-04-05T15:48:03.243861"
     },
     {
       "date": "2026-03-06",
       "action": 2,
       "action_name": "LONG",
       "price": 24450.44921875,
-      "timestamp": "2026-03-06T10:50:39.623452"
+      "confidence": 0.7,
+      "features": {
+        "close": 24450.45,
+        "log_ret": -0.0128,
+        "adx": 0.2356,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0385,
+        "atr_pct": 0.0134
+      },
+      "timestamp": "2026-04-05T15:48:03.245477"
     },
     {
       "date": "2026-03-09",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 24028.05078125,
-      "timestamp": "2026-03-09T10:57:29.915198"
+      "confidence": 0.7,
+      "features": {
+        "close": 24028.05,
+        "log_ret": -0.0174,
+        "adx": 0.2571,
+        "macd_hist": -1.0,
+        "bb_pct": -0.1009,
+        "atr_pct": 0.0149
+      },
+      "timestamp": "2026-04-05T15:48:03.245477"
     },
     {
       "date": "2026-03-10",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 24261.599609375,
-      "timestamp": "2026-03-10T10:55:38.386573"
+      "confidence": 0.7,
+      "features": {
+        "close": 24261.6,
+        "log_ret": 0.0097,
+        "adx": 0.2691,
+        "macd_hist": -1.0,
+        "bb_pct": 0.07,
+        "atr_pct": 0.0145
+      },
+      "timestamp": "2026-04-05T15:48:03.251382"
     },
     {
       "date": "2026-03-11",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23866.849609375,
-      "timestamp": "2026-03-11T10:55:20.077108"
+      "confidence": 0.7,
+      "features": {
+        "close": 23866.85,
+        "log_ret": -0.0164,
+        "adx": 0.2835,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0044,
+        "atr_pct": 0.0151
+      },
+      "timestamp": "2026-04-05T15:48:03.253461"
     },
     {
       "date": "2026-03-12",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23639.150390625,
-      "timestamp": "2026-03-12T10:54:50.485529"
+      "confidence": 0.7,
+      "features": {
+        "close": 23639.15,
+        "log_ret": -0.0096,
+        "adx": 0.3002,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0029,
+        "atr_pct": 0.0151
+      },
+      "timestamp": "2026-04-05T15:48:03.255992"
     },
     {
       "date": "2026-03-13",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23151.099609375,
-      "timestamp": "2026-03-13T10:51:44.895919"
+      "confidence": 0.7,
+      "features": {
+        "close": 23151.1,
+        "log_ret": -0.0209,
+        "adx": 0.3201,
+        "macd_hist": -1.0,
+        "bb_pct": -0.0539,
+        "atr_pct": 0.0159
+      },
+      "timestamp": "2026-04-05T15:48:03.258161"
     },
     {
       "date": "2026-03-16",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23408.80078125,
-      "timestamp": "2026-03-16T11:06:50.166849"
+      "confidence": 0.7,
+      "features": {
+        "close": 23408.8,
+        "log_ret": 0.0111,
+        "adx": 0.3401,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0879,
+        "atr_pct": 0.0163
+      },
+      "timestamp": "2026-04-05T15:48:03.260693"
     },
     {
       "date": "2026-03-17",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23581.150390625,
-      "timestamp": "2026-03-17T11:02:13.356637"
+      "confidence": 0.7,
+      "features": {
+        "close": 23581.15,
+        "log_ret": 0.0073,
+        "adx": 0.3531,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1754,
+        "atr_pct": 0.016
+      },
+      "timestamp": "2026-04-05T15:48:03.262801"
     },
     {
       "date": "2026-03-18",
       "action": 2,
       "action_name": "LONG",
       "price": 23777.80078125,
-      "timestamp": "2026-03-18T11:02:49.057758"
+      "confidence": 0.7,
+      "features": {
+        "close": 23777.8,
+        "log_ret": 0.0083,
+        "adx": 0.3583,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2567,
+        "atr_pct": 0.0155
+      },
+      "timestamp": "2026-04-05T15:48:03.263809"
     },
     {
       "date": "2026-03-19",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 23002.150390625,
-      "timestamp": "2026-03-19T10:56:12.768595"
+      "confidence": 0.7,
+      "features": {
+        "close": 23002.15,
+        "log_ret": -0.0332,
+        "adx": 0.3708,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0848,
+        "atr_pct": 0.0176
+      },
+      "timestamp": "2026-04-05T15:48:03.267769"
     },
     {
       "date": "2026-03-20",
       "action": 2,
       "action_name": "LONG",
       "price": 23114.5,
-      "timestamp": "2026-03-20T10:52:42.997288"
+      "confidence": 0.7,
+      "features": {
+        "close": 23114.5,
+        "log_ret": 0.0049,
+        "adx": 0.3824,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1565,
+        "atr_pct": 0.0173
+      },
+      "timestamp": "2026-04-05T15:48:03.267769"
     },
     {
       "date": "2026-03-23",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22512.650390625,
-      "timestamp": "2026-03-23T11:04:59.256809"
+      "confidence": 0.7,
+      "features": {
+        "close": 22512.65,
+        "log_ret": -0.0264,
+        "adx": 0.3985,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0538,
+        "atr_pct": 0.0185
+      },
+      "timestamp": "2026-04-05T15:48:03.267769"
     },
     {
       "date": "2026-03-24",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22912.400390625,
-      "timestamp": "2026-03-24T11:02:42.195289"
+      "confidence": 0.7,
+      "features": {
+        "close": 22912.4,
+        "log_ret": 0.0176,
+        "adx": 0.407,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1867,
+        "atr_pct": 0.0186
+      },
+      "timestamp": "2026-04-05T15:48:03.274042"
     },
     {
       "date": "2026-03-25",
-      "action": 0,
-      "action_name": "SHORT",
-      "price": 23306.44921875,
-      "timestamp": "2026-03-25T11:00:30.852253"
-    },
-    {
-      "date": "2026-03-26",
       "action": 2,
       "action_name": "LONG",
       "price": 23306.44921875,
-      "timestamp": "2026-03-26T11:07:37.123362"
+      "confidence": 0.7,
+      "features": {
+        "close": 23306.45,
+        "log_ret": 0.0171,
+        "adx": 0.4034,
+        "macd_hist": -1.0,
+        "bb_pct": 0.3133,
+        "atr_pct": 0.0187
+      },
+      "timestamp": "2026-04-05T15:48:03.274042"
     },
     {
       "date": "2026-03-27",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22819.599609375,
-      "timestamp": "2026-03-27T11:00:07.099033"
+      "confidence": 0.7,
+      "features": {
+        "close": 22819.6,
+        "log_ret": -0.0211,
+        "adx": 0.4032,
+        "macd_hist": -1.0,
+        "bb_pct": 0.1988,
+        "atr_pct": 0.0193
+      },
+      "timestamp": "2026-04-05T15:48:03.279138"
     },
     {
       "date": "2026-03-30",
-      "action": 1,
-      "action_name": "NEUTRAL",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22331.400390625,
-      "timestamp": "2026-03-30T11:13:21.096113"
-    },
-    {
-      "date": "2026-03-31",
-      "action": 1,
-      "action_name": "NEUTRAL",
-      "price": 22331.400390625,
-      "timestamp": "2026-03-31T11:06:46.636435"
+      "confidence": 0.7,
+      "features": {
+        "close": 22331.4,
+        "log_ret": -0.0216,
+        "adx": 0.4084,
+        "macd_hist": -1.0,
+        "bb_pct": 0.0843,
+        "atr_pct": 0.02
+      },
+      "timestamp": "2026-04-05T15:48:03.281839"
     },
     {
       "date": "2026-04-01",
-      "action": 0,
-      "action_name": "SHORT",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22679.400390625,
-      "timestamp": "2026-04-01T11:10:08.891669"
+      "confidence": 0.7,
+      "features": {
+        "close": 22679.4,
+        "log_ret": 0.0155,
+        "adx": 0.4073,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2116,
+        "atr_pct": 0.0202
+      },
+      "timestamp": "2026-04-05T15:48:03.283922"
     },
     {
       "date": "2026-04-02",
-      "action": 1,
-      "action_name": "NEUTRAL",
+      "action": 2,
+      "action_name": "LONG",
       "price": 22713.099609375,
-      "timestamp": "2026-04-02T11:04:46.744019"
-    },
-    {
-      "date": "2026-04-03",
-      "action": 0,
-      "action_name": "SHORT",
-      "price": 22713.099609375,
-      "timestamp": "2026-04-03T10:57:29.615037"
+      "confidence": 0.7,
+      "features": {
+        "close": 22713.1,
+        "log_ret": 0.0015,
+        "adx": 0.4109,
+        "macd_hist": -1.0,
+        "bb_pct": 0.2429,
+        "atr_pct": 0.0206
+      },
+      "timestamp": "2026-04-05T15:48:03.286478"
     }
   ],
-  "equity_curve": [
-    {
-      "date": "2026-02-23",
-      "equity": 981228.5442655373,
-      "position": "LONG",
-      "price": 25713.0
-    },
-    {
-      "date": "2026-02-23",
-      "equity": 980541.6842845514,
-      "position": "SHORT",
-      "price": 25713.0
-    },
-    {
-      "date": "2026-02-23",
-      "equity": 979855.3051055522,
-      "position": "SHORT",
-      "price": 25713.0
-    },
-    {
-      "date": "2026-02-23",
-      "equity": 979169.4063919783,
-      "position": "SHORT",
-      "price": 25713.0
-    },
-    {
-      "date": "2026-02-24",
-      "equity": 968188.8473033819,
-      "position": "LONG",
-      "price": 25424.650390625
-    },
-    {
-      "date": "2026-02-25",
-      "equity": 969714.0695563368,
-      "position": "SHORT",
-      "price": 25482.5
-    },
-    {
-      "date": "2026-02-26",
-      "equity": 968500.5796157654,
-      "position": "LONG",
-      "price": 25496.55078125
-    },
-    {
-      "date": "2026-02-27",
-      "equity": 955747.0070907158,
-      "position": "SHORT",
-      "price": 25178.650390625
-    },
-    {
-      "date": "2026-03-02",
-      "equity": 966957.181094433,
-      "position": "LONG",
-      "price": 24865.69921875
-    },
-    {
-      "date": "2026-03-03",
-      "equity": 966957.181094433,
-      "position": "LONG",
-      "price": 24865.69921875
-    },
-    {
-      "date": "2026-03-04",
-      "equity": 951977.8657152212,
-      "position": "LONG",
-      "price": 24480.5
-    },
-    {
-      "date": "2026-03-05",
-      "equity": 962409.90055284,
-      "position": "SHORT",
-      "price": 24765.900390625
-    },
-    {
-      "date": "2026-03-06",
-      "equity": 973994.7354676116,
-      "position": "LONG",
-      "price": 24450.44921875
-    },
-    {
-      "date": "2026-03-09",
-      "equity": 956486.5057930548,
-      "position": "SHORT",
-      "price": 24028.05078125
-    },
-    {
-      "date": "2026-03-10",
-      "equity": 947189.6092374815,
-      "position": "SHORT",
-      "price": 24261.599609375
-    },
-    {
-      "date": "2026-03-11",
-      "equity": 962600.9219401284,
-      "position": "SHORT",
-      "price": 23866.849609375
-    },
-    {
-      "date": "2026-03-12",
-      "equity": 971784.5168209417,
-      "position": "SHORT",
-      "price": 23639.150390625
-    },
-    {
-      "date": "2026-03-13",
-      "equity": 991847.8517887335,
-      "position": "SHORT",
-      "price": 23151.099609375
-    },
-    {
-      "date": "2026-03-16",
-      "equity": 980807.3242094667,
-      "position": "SHORT",
-      "price": 23408.80078125
-    },
-    {
-      "date": "2026-03-17",
-      "equity": 973586.0333462867,
-      "position": "SHORT",
-      "price": 23581.150390625
-    },
-    {
-      "date": "2026-03-18",
-      "equity": 964785.4928554173,
-      "position": "LONG",
-      "price": 23777.80078125
-    },
-    {
-      "date": "2026-03-19",
-      "equity": 932638.0884126384,
-      "position": "SHORT",
-      "price": 23002.150390625
-    },
-    {
-      "date": "2026-03-20",
-      "equity": 927429.9491740993,
-      "position": "LONG",
-      "price": 23114.5
-    },
-    {
-      "date": "2026-03-23",
-      "equity": 902632.5575660075,
-      "position": "SHORT",
-      "price": 22512.650390625
-    },
-    {
-      "date": "2026-03-24",
-      "equity": 886604.797234542,
-      "position": "SHORT",
-      "price": 22912.400390625
-    },
-    {
-      "date": "2026-03-25",
-      "equity": 871356.9150657569,
-      "position": "SHORT",
-      "price": 23306.44921875
-    },
-    {
-      "date": "2026-03-26",
-      "equity": 870746.9652252109,
-      "position": "LONG",
-      "price": 23306.44921875
-    },
-    {
-      "date": "2026-03-27",
-      "equity": 851948.3644722026,
-      "position": "SHORT",
-      "price": 22819.599609375
-    },
-    {
-      "date": "2026-03-30",
-      "equity": 869578.4608999158,
-      "position": "NEUTRAL",
-      "price": 22331.400390625
-    },
-    {
-      "date": "2026-03-31",
-      "equity": 869578.4608999158,
-      "position": "NEUTRAL",
-      "price": 22331.400390625
-    },
-    {
-      "date": "2026-04-01",
-      "equity": 868969.7559772858,
-      "position": "SHORT",
-      "price": 22679.400390625
-    },
-    {
-      "date": "2026-04-02",
-      "equity": 867070.2789069914,
-      "position": "NEUTRAL",
-      "price": 22713.099609375
-    },
-    {
-      "date": "2026-04-03",
-      "equity": 866463.3297117564,
-      "position": "SHORT",
-      "price": 22713.099609375
-    }
-  ]
+  "equity_curve": []
 }

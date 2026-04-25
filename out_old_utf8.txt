@@ -1,0 +1,11 @@
+
+======================================================================
+Traceback (most recent call last):
+  File "C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\validate_colab_brain.py", line 162, in <module>
+    validate_brain(brain_path)
+  File "C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\validate_colab_brain.py", line 22, in validate_brain
+    print("\U0001f50d BRAIN VALIDATION REPORT")
+  File "C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f50d' in position 0: character maps to <undefined>

@@ -1,0 +1,132 @@
+C:\Users\ayush\AppData\Local\Programs\Python\Python312\Lib\site-packages\yfinance\scrapers\history.py:201: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+  dt_now = pd.Timestamp.utcnow()
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+
+======================================================================
+  NIFTY50 BRAIN - ADAPTIVE RETUNING
+======================================================================
+  Date:        2026-04-05 16:03
+  Data Window: Last 6 months
+  Generations: 300
+  Mutation:    0.250
+  Holdout:     Last 20 days
+  Mode:        Force Promote
+======================================================================
+
+  [1/7] LOADING CURRENT BRAIN
+  [OK] Brain loaded (50 genomes)
+
+  [2/7] FETCHING RECENT MARKET DATA
+  [FETCH] ^NSEI 2025-10-02 -> 2026-04-06 (6 months)...
+  [OK] 93 trading days (2025-11-17 to 2026-04-02)
+  [OK] Train:   73 days (2025-11-17 to 2026-03-02)
+  [OK] Holdout: 40 days (2026-02-03 to 2026-04-02)
+
+  [3/7] LOADING TRADE FEEDBACK
+  [FEEDBACK] Found 22 painful days from paper trading
+    2026-01-08: LONG @ 25877 = -1.01%
+    2026-01-09: LONG @ 25683 = -0.75%
+    2026-01-20: LONG @ 25232 = -1.38%
+    2026-01-23: LONG @ 25049 = -0.95%
+    2026-02-02: LONG @ 25088 = -0.92%
+
+  [4/7] SEEDING POPULATION
+  [SEED] Seeding 50 genomes from master (11283 weights)
+  [SEED] Mutation strength: 0.250
+  [OK] Population seeded. Genome 0 = original, genomes 1-49 = mutated clones
+
+  [5/7] EVOLVING ON RECENT DATA (300 generations)
+  ============================================================
+  Gen   1/300 | Fit:   19.12 | Sh:  2.58 | So:  5.36 | Ret:    1.2% | DD:  1.0% | Trades: 9 | DivPen: 0.0
+  Gen   5/300 | Fit:   56.77 | Sh:  6.62 | So: 15.00 | Ret:    3.0% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen  10/300 | Fit:   58.64 | Sh:  7.02 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  15/300 | Fit:   58.83 | Sh:  7.11 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  20/300 | Fit:   58.79 | Sh:  7.09 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  25/300 | Fit:   58.58 | Sh:  7.01 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  30/300 | Fit:   58.68 | Sh:  7.04 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  35/300 | Fit:   58.70 | Sh:  7.05 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  40/300 | Fit:   58.72 | Sh:  7.06 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  45/300 | Fit:   58.72 | Sh:  7.06 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  50/300 | Fit:   58.78 | Sh:  7.09 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  55/300 | Fit:   58.77 | Sh:  7.08 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  60/300 | Fit:   58.63 | Sh:  7.01 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  65/300 | Fit:   58.74 | Sh:  7.07 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  70/300 | Fit:   58.87 | Sh:  7.13 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  75/300 | Fit:   58.82 | Sh:  7.11 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  80/300 | Fit:   58.65 | Sh:  7.03 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  85/300 | Fit:   58.79 | Sh:  7.10 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  90/300 | Fit:   58.64 | Sh:  7.03 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen  95/300 | Fit:   58.72 | Sh:  7.06 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen 100/300 | Fit:   58.67 | Sh:  7.03 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen 105/300 | Fit:   58.87 | Sh:  7.13 | So: 15.00 | Ret:    3.2% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen 110/300 | Fit:   58.58 | Sh:  6.99 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen 115/300 | Fit:   58.77 | Sh:  7.08 | So: 15.00 | Ret:    3.1% | DD:  0.6% | Trades: 10 | DivPen: 0.0
+  Gen 120/300 | Fit:   61.17 | Sh:  9.75 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 125/300 | Fit:   61.58 | Sh:  9.94 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 130/300 | Fit:   61.58 | Sh:  9.94 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 135/300 | Fit:   61.52 | Sh:  9.91 | So: 15.00 | Ret:    4.2% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 140/300 | Fit:   61.55 | Sh:  9.92 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 145/300 | Fit:   61.58 | Sh:  9.94 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 150/300 | Fit:   61.45 | Sh:  9.87 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 155/300 | Fit:   61.63 | Sh:  9.96 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 160/300 | Fit:   61.71 | Sh: 10.00 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 165/300 | Fit:   61.59 | Sh:  9.95 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 170/300 | Fit:   61.63 | Sh:  8.98 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 175/300 | Fit:   61.52 | Sh:  8.92 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 180/300 | Fit:   61.48 | Sh:  9.89 | So: 15.00 | Ret:    4.1% | DD:  0.6% | Trades: 7 | DivPen: 0.0
+  Gen 185/300 | Fit:   61.58 | Sh:  8.96 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 190/300 | Fit:   61.57 | Sh:  8.95 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 195/300 | Fit:   61.55 | Sh:  8.94 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 200/300 | Fit:   61.67 | Sh:  9.00 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 205/300 | Fit:   61.54 | Sh:  8.95 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 210/300 | Fit:   61.88 | Sh:  9.10 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 215/300 | Fit:   61.54 | Sh:  8.93 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 220/300 | Fit:   61.66 | Sh:  9.00 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 225/300 | Fit:   61.53 | Sh:  8.93 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 230/300 | Fit:   61.57 | Sh:  8.95 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 235/300 | Fit:   61.71 | Sh:  9.02 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 240/300 | Fit:   61.58 | Sh:  8.97 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 245/300 | Fit:   61.71 | Sh:  9.02 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 250/300 | Fit:   61.74 | Sh:  9.03 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 255/300 | Fit:   61.63 | Sh:  8.99 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 260/300 | Fit:   61.57 | Sh:  8.95 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 265/300 | Fit:   61.59 | Sh:  8.96 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 270/300 | Fit:   61.72 | Sh:  9.03 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 275/300 | Fit:   61.57 | Sh:  8.95 | So: 15.00 | Ret:    3.7% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 280/300 | Fit:   61.50 | Sh:  8.91 | So: 15.00 | Ret:    3.7% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 285/300 | Fit:   61.67 | Sh:  9.00 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 290/300 | Fit:   61.67 | Sh:  9.00 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 295/300 | Fit:   61.58 | Sh:  8.96 | So: 15.00 | Ret:    3.7% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+  Gen 300/300 | Fit:   61.58 | Sh:  8.96 | So: 15.00 | Ret:    3.8% | DD:  0.6% | Trades: 9 | DivPen: 0.0
+
+  [OK] Evolution complete. Best fitness: 61.93
+       Best return: 3.8%
+
+  [6/7] GATEKEEPER TEST (holdout: 20 days)
+  [SKIP] Force promote enabled — skipping gatekeeper
+
+  [7/7] SAVING RESULTS
+  [SAVE] Brain v1.4 saved to C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\brain_versions\v1.4/
+  [SAVE] Active brain updated: C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\nifty50_brain_validated.pkl
+
+  [PROMOTED] Brain v1.4 is now the active brain!
+
+  ============================================================
+  RETUNING SUMMARY
+  ============================================================
+  Version:        v1.4 (PROMOTED)
+  Train Period:   2025-11-17 to 2026-03-02
+  Holdout Period: 2026-02-03 to 2026-04-02
+  Generations:    300
+  Best Fitness:   61.93
+  Best Return:    3.8%
+  Best Sortino:   15.00
+  Best MaxDD:     0.6%
+  ============================================================

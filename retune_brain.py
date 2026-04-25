@@ -78,14 +78,16 @@ def fetch_data(months_back=12):
 
 # ─── Fitness Function ─────────────────────────────────────────────────────────
 
-def calculate_fitness(returns, equity_curve, num_trades, pain_periods=None):
-    """Professional fitness with pain-weighted learning.
+def calculate_fitness(returns, equity_curve, num_trades, action_counts=None, step_dates=None, pain_days=None):
+    """Alpha-focused fitness: rewards absolute returns, punishes drawdowns AND perma-bull behavior.
 
     Args:
         returns: Array of episode returns
         equity_curve: List of equity values
         num_trades: Number of position changes
-        pain_periods: Optional dict mapping step ranges to pain multipliers
+        action_counts: dict with counts of {0:short, 1:neutral, 2:long}
+        step_dates: List of date strings corresponding to each step
+        pain_days: List of date strings where failure must be avoided (high weight)
     """
     if len(returns) == 0:
         return -1000.0, {'sharpe': 0, 'sortino': 0, 'max_dd': 1.0, 'return': -100, 'trades': 0}
@@ -120,12 +122,42 @@ def calculate_fitness(returns, equity_curve, num_trades, pain_periods=None):
     sortino = np.clip(sortino, -10, 15)
     max_dd = np.clip(max_dd, 0, 1)
 
-    # Penalties
+    # --- DRAWDOWN PENALTY: Any drawdown is bad (Renaissance style - absolute return) ---
+    dd_penalty = max_dd * 120.0
+
+    # --- TRADE PENALTY: Must make minimum trades to be considered active ---
     trade_penalty = max(0, (10 - num_trades)) + max(0, (num_trades - 500) * 0.1)
-    dd_penalty = max(0, (max_dd - 0.25) * 50.0)
+
+    # --- ACTION DIVERSITY PENALTY: The core fix for perma-bull behaviour ---
+    # Force the model to use ALL three actions. Any action >70% gets a huge penalty.
+    diversity_penalty = 0.0
+    if action_counts is not None:
+        total_steps = sum(action_counts.values()) + 1e-9
+        pct_short   = action_counts.get(0, 0) / total_steps
+        pct_neutral = action_counts.get(1, 0) / total_steps
+        pct_long    = action_counts.get(2, 0) / total_steps
+        # Penalize domination by any single action
+        max_action_pct = max(pct_short, pct_neutral, pct_long)
+        if max_action_pct > 0.70:
+            diversity_penalty = (max_action_pct - 0.70) * 200.0
+        # Also require at least 5% in short and 5% in neutral
+        if pct_short < 0.05:
+            diversity_penalty += (0.05 - pct_short) * 100.0
+        if pct_neutral < 0.05:
+            diversity_penalty += (0.05 - pct_neutral) * 100.0
+
+    # --- PAIN POINT PENALTY: Targeted recovery ---
+    pain_penalty = 0.0
+    if pain_days and step_dates and returns is not None:
+        # returns has N elements, step_dates has N elements
+        for i, date in enumerate(step_dates):
+            if date in pain_days:
+                # If we lost money on a pain day, apply huge penalty
+                if returns[i] < 0:
+                    pain_penalty += abs(returns[i]) * 1000.0 # Massive weight
 
     # Base fitness
-    fitness = (sharpe * 2.0) + (sortino * 3.0) + (total_return * 0.1) - dd_penalty - trade_penalty
+    fitness = (sharpe * 2.0) + (sortino * 3.0) + (total_return * 0.1) - dd_penalty - trade_penalty - diversity_penalty - pain_penalty
 
     metrics = {
         'sharpe': float(sharpe),
@@ -133,12 +165,13 @@ def calculate_fitness(returns, equity_curve, num_trades, pain_periods=None):
         'max_dd': float(max_dd),
         'return': float(total_return),
         'trades': int(num_trades),
+        'div_penalty': float(diversity_penalty),
     }
 
     return float(fitness), metrics
 
 
-def evaluate_genome(pilot, env, genome_idx, max_steps):
+def evaluate_genome(pilot, env, genome_idx, max_steps, pain_days=None):
     """Evaluate a single genome on an environment."""
     state, _ = env.reset()
     equity = 1.0
@@ -148,9 +181,11 @@ def evaluate_genome(pilot, env, genome_idx, max_steps):
     steps = 0
     last_action = 1
     num_trades = 0
+    action_counts = {0: 0, 1: 0, 2: 0}
 
     while not terminated and steps < max_steps:
         action = pilot.get_action(state, genome_idx)
+        action_counts[action] = action_counts.get(action, 0) + 1
         if action != last_action:
             num_trades += 1
             last_action = action
@@ -164,7 +199,12 @@ def evaluate_genome(pilot, env, genome_idx, max_steps):
         returns.append(reward)
         steps += 1
 
-    return calculate_fitness(np.array(returns), equity_curve, num_trades)
+    try:
+        step_dates = [str(d.date()) for d in env.df.index[env.window_size:env.window_size + len(returns)]]
+    except:
+        step_dates = None
+
+    return calculate_fitness(np.array(returns), equity_curve, num_trades, action_counts, step_dates, pain_days)
 
 
 # ─── Seeded Population ────────────────────────────────────────────────────────
@@ -453,6 +493,8 @@ def retune(months=12, generations=50, mutation=0.05, force_promote=False, holdou
     print(f"\n  [4/7] SEEDING POPULATION")
     seed_population_from_brain(pilot, mutation_strength=mutation)
 
+    feedback_dates = [p['date'] for p in feedback] if feedback else None
+
     # Step 5: Evolution on recent data
     print(f"\n  [5/7] EVOLVING ON RECENT DATA ({generations} generations)")
     print(f"  {'='*60}")
@@ -480,7 +522,7 @@ def retune(months=12, generations=50, mutation=0.05, force_promote=False, holdou
         all_metrics = []
 
         for i in range(pilot.pop_size):
-            fit, metrics = evaluate_genome(pilot, env_train, i, max_steps)
+            fit, metrics = evaluate_genome(pilot, env_train, i, max_steps, pain_days=feedback_dates)
             scores.append(fit)
             all_metrics.append(metrics)
 
@@ -501,7 +543,7 @@ def retune(months=12, generations=50, mutation=0.05, force_promote=False, holdou
             print(f"  Gen {gen:3d}/{generations} | Fit: {best_fit:7.2f} | "
                   f"Sh: {best_metrics['sharpe']:5.2f} | So: {best_metrics['sortino']:5.2f} | "
                   f"Ret: {best_metrics['return']:6.1f}% | DD: {best_metrics['max_dd']:5.1%} | "
-                  f"Trades: {best_metrics['trades']}")
+                  f"Trades: {best_metrics['trades']} | DivPen: {best_metrics.get('div_penalty', 0):.1f}")
 
         # Evolve
         pilot.evolve(scores)

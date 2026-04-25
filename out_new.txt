@@ -1,0 +1,65 @@
+Successfully applied feature: stationarity
+Successfully applied feature: trend_strength
+Successfully applied feature: volatility_clustering
+Successfully applied feature: smart_money_flow
+Successfully applied feature: momentum_macd
+Successfully applied feature: mean_reversion_bb
+Successfully applied feature: tail_risk_vix
+Successfully applied feature: risk_regime_features
+C:\Users\ayush\OneDrive\Desktop\evolutionary-neural-network\evonet\core\layers.py:72: RuntimeWarning: overflow encountered in exp
+  return 1.0 / (1.0 + np.exp(-raw))
+
+======================================================================
+🔍 BRAIN VALIDATION REPORT
+======================================================================
+
+📥 Loading brain: brain_versions/ultimate_brain_colab.pkl
+✅ Brain loaded successfully
+   - Input Dimension: 200
+   - Output Dimension: 3
+   - Population Size: 50
+
+📊 Fetching Validation Data (2024)...
+[CACHE] Loading cached data...
+[ALPHA] Applying Modular Market Intelligence via AlphaFactory...
+✅ Loaded 462 days of fresh data
+
+🌍 Setting up validation environment...
+✅ Environment ready
+
+🧪 Running validation episode...
+✅ Validation complete!
+
+======================================================================
+📈 PERFORMANCE METRICS (2024 Out-of-Sample)
+======================================================================
+
+💰 Total Return:     +194.92%
+📊 Sharpe Ratio:     4.03
+🎯 Sortino Ratio:    5.18
+📉 Max Drawdown:     4.8%
+✅ Win Rate:         25.8%
+🔄 Total Trades:     1000
+
+📌 Action Distribution:
+   Short   :   63 (  6.3%)
+   Neutral :   67 (  6.7%)
+   Long    :  870 ( 87.0%)
+
+======================================================================
+🏆 INVESTMENT GRADE ASSESSMENT
+======================================================================
+
+Grade: ⭐⭐⭐⭐⭐ EXCELLENT
+
+✅ PITCH READY!
+   - Sortino > 2.5 ✓
+   - Drawdown < 20% ✓
+
+📝 Recommended Pitch Points:
+   1. 'Achieved Sortino of 5.18 on out-of-sample data'
+   2. 'Controlled drawdown to 4.8% during validation'
+   3. 'Trained on 6 years of data with 200+ generations'
+
+======================================================================
+

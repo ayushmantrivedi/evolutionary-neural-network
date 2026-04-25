@@ -20,9 +20,6 @@ Usage:
 """
 
 import io, sys
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
 import os
 import pickle
 import json
@@ -30,10 +27,9 @@ import argparse
 import time
 import datetime
 import warnings
+import subprocess
 import numpy as np
 import pandas as pd
-
-warnings.filterwarnings("ignore")
 
 # Path setup
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -188,21 +184,7 @@ def fetch_recent_data(days_back=LOOKBACK_DAYS + WINDOW_SIZE + 10):
 
 
 def get_ai_signal(brain, df, target_idx=None, prev_position=1):
-    """Get the AI's trading signal by constructing the state directly.
-
-    This is the FAST path -- builds the observation vector from the
-    last WINDOW_SIZE rows of features, matching what FinancialRegimeEnv
-    does internally, but without stepping through the entire episode.
-
-    Args:
-        brain: Loaded brain object
-        df: Processed DataFrame with AlphaFactory features
-        target_idx: Integer index into df (if None, uses last row)
-        prev_position: Previous position (0=Short, 1=Neutral, 2=Long)
-
-    Returns: (action, confidence, features_dict)
-    """
-    # Determine the target row
+    """Get the AI's trading signal."""
     if target_idx is not None:
         if target_idx < WINDOW_SIZE:
             return None, 0, {}
@@ -214,40 +196,29 @@ def get_ai_signal(brain, df, target_idx=None, prev_position=1):
         return None, 0, {}
 
     try:
-        # Extract the 9 feature columns that the environment uses
-        # These match FinancialRegimeEnv.signal_features
         feature_cols = [c for c in df.columns if c not in
                         ['Open', 'High', 'Low', 'Close', 'Volume', 'Date',
                          'Adj Close', 'Adj_Close']]
 
-        # Get the window of data
         window_start = end_idx - WINDOW_SIZE
         window_data = df.iloc[window_start:end_idx]
 
-        # Build the 9-feature observation (same as env._process_data)
-        obs_features = window_data[feature_cols].values[:, :9]  # Take first 9 features
+        obs_features = window_data[feature_cols].values[:, :9]
         if obs_features.shape != (WINDOW_SIZE, 9):
-            # Pad or truncate to exactly 9 features
             padded = np.zeros((WINDOW_SIZE, 9), dtype=np.float32)
             n_feat = min(9, obs_features.shape[1])
             padded[:, :n_feat] = obs_features[:, :n_feat]
             obs_features = padded
 
-        # Add position channel (10th feature)
-        pos_val = float(prev_position - 1)  # 0->-1, 1->0, 2->1
+        pos_val = float(prev_position - 1)
         position_channel = np.full((WINDOW_SIZE, 1), pos_val, dtype=np.float32)
         full_obs = np.hstack([obs_features.astype(np.float32), position_channel])
 
-        # Flatten to 200-dim state vector
         state = full_obs.flatten()
-
-        # Replace NaN/Inf with 0
         state = np.nan_to_num(state, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Get brain's action
         action = brain.get_action(state, 0)
 
-        # Extract key features for logging
         latest = df.iloc[end_idx - 1]
         features = {
             "close": round(float(latest["Close"]), 2),
@@ -260,7 +231,6 @@ def get_ai_signal(brain, df, target_idx=None, prev_position=1):
 
     except Exception as e:
         print(f"  [WARN] Signal generation error: {e}")
-        import traceback; traceback.print_exc()
         return None, 0, {}
 
 
@@ -269,42 +239,36 @@ def execute_paper_trade(log, action, price, date):
     current = log.data["current_position"]
 
     if action == current:
-        return None  # No change
+        return None
 
-    # Calculate cost
     trade_value = log.data["current_capital"]
     cost = trade_value * (FEE_PCT + SLIPPAGE_PCT)
 
-    # Calculate P&L from position change
-    # When switching positions, we close the old and open the new
     log.data["current_capital"] -= cost
-
     trade = log.add_trade(date, current, action, price, cost)
 
     return trade
 
 
 def calculate_daily_pnl(log, df):
-    """Recalculate capital based on daily price movements and current position."""
+    """Recalculate capital based on daily price movements."""
     signals = sorted(log.data["daily_signals"], key=lambda x: x["date"])
     if len(signals) < 2:
         return
 
     capital = log.data["initial_capital"]
-    position = 1  # Start neutral
+    position = 1
 
     for i in range(1, len(signals)):
         prev = signals[i - 1]
         curr = signals[i]
 
-        # If position changed, apply cost
         if curr["action"] != position:
             cost = capital * (FEE_PCT + SLIPPAGE_PCT)
             capital -= cost
             position = curr["action"]
 
-        # Apply daily P&L based on position
-        pos_map = position - 1  # -1, 0, 1
+        pos_map = position - 1
         if prev["price"] > 0:
             daily_ret = (curr["price"] - prev["price"]) / prev["price"]
             capital *= (1 + pos_map * daily_ret)
@@ -312,8 +276,6 @@ def calculate_daily_pnl(log, df):
     log.data["current_capital"] = round(capital, 2)
     log.data["current_position"] = position
 
-
-# ─── Commands ─────────────────────────────────────────────────────────────────
 
 def cmd_signal(brain, log):
     """Get today's trading signal."""
@@ -326,21 +288,36 @@ def cmd_signal(brain, log):
     latest_price = float(df.iloc[-1]["Close"])
 
     prev_pos = log.data["current_position"]
-    action, conf, features = get_ai_signal(brain, df, prev_position=prev_pos)
+    
+    # --- SAFETY PROTOCOL: Stop Loss for the Brain ---
+    current_cap = log.data["current_capital"]
+    initial_cap = log.data["initial_capital"]
+    drawdown = (initial_cap - current_cap) / initial_cap
+    
+    if drawdown > 0.10:
+        print(f"  [SAFETY] Portfolio drawdown ({drawdown:.1%}) exceeds safety limit.")
+        print(f"  [SAFETY] Overriding AI signal to NEUTRAL (Capital Preservation Mode)")
+        action = 1
+        conf = 1.0
+        features = {"note": "Safety Override Active"}
+    else:
+        action, conf, features = get_ai_signal(brain, df, prev_position=prev_pos)
 
     if action is None:
         print("  [ERROR] Could not generate signal. Check data.")
         return
 
     signal = log.add_signal(latest_date, action, latest_price, conf, features)
-
-    # Execute paper trade if position changed
     trade = execute_paper_trade(log, action, latest_price, latest_date)
 
-    # Recalculate P&L
     calculate_daily_pnl(log, df)
     log.update_equity(latest_date, latest_price)
     log.save()
+
+    # --- AUTO-RECOVERY: Trigger watchdog ---
+    if drawdown > 0.05:
+        print(f"\n  [WATCHDOG] Performance issues detected. Running Recovery Autopilot...")
+        subprocess.run([sys.executable, os.path.join(ROOT_DIR, "recovery_autopilot.py")])
 
     # Display
     print(f"\n  Date:       {latest_date}")
@@ -352,7 +329,6 @@ def cmd_signal(brain, log):
 
     if trade:
         print(f"\n  >> TRADE EXECUTED: {trade['from']} -> {trade['to']}")
-        print(f"     Cost: Rs {trade['cost']:,.2f}")
     else:
         print(f"\n  >> No trade (holding {ACTION_NAMES[action]})")
 
@@ -360,12 +336,6 @@ def cmd_signal(brain, log):
     print(f"  Capital:    Rs {log.data['current_capital']:>12,.2f}")
     print(f"  P&L:        {log.current_pnl_pct:>+8.2f}%")
     print(f"  Position:   {ACTION_NAMES[log.data['current_position']]}")
-    print(f"  Trades:     {log.total_trades}")
-    print(f"  Signals:    {log.total_signals}")
-
-    print(f"\n  --- Key Indicators ---")
-    for k, v in features.items():
-        print(f"  {k:>10s}: {v}")
 
     print(f"\n  Trade log saved to: {TRADE_LOG_FILE}")
     print("=" * 70)
@@ -377,7 +347,6 @@ def cmd_backfill(brain, log, days):
     print(f"  NIFTY50 AI - BACKFILL SIMULATION ({days} DAYS)")
     print("=" * 70)
 
-    # Reset log for clean backfill
     log.data = {
         "initial_capital": INITIAL_CAPITAL,
         "current_capital": INITIAL_CAPITAL,
@@ -388,209 +357,75 @@ def cmd_backfill(brain, log, days):
     }
 
     df = fetch_recent_data(days_back=days + LOOKBACK_DAYS + 30)
-
-    if len(df) < days:
-        print(f"  [WARN] Only {len(df)} days available, using all")
-        days = len(df) - WINDOW_SIZE - 5
-
     start_idx = max(WINDOW_SIZE + 5, len(df) - days)
     trade_dates = df.index[start_idx:]
-
-    print(f"  Simulating {len(trade_dates)} trading days...")
-    print(f"  Period: {trade_dates[0].date()} to {trade_dates[-1].date()}")
-    print(f"  Starting Capital: Rs {INITIAL_CAPITAL:,.2f}")
-    print()
-    print(f"  {'Date':>12s}  {'NIFTY':>10s}  {'Signal':>8s}  {'Trade':>15s}  {'Capital':>14s}  {'P&L':>8s}")
-    print(f"  {'-'*12}  {'-'*10}  {'-'*8}  {'-'*15}  {'-'*14}  {'-'*8}")
 
     for i, date in enumerate(trade_dates):
         date_str = date.date()
         price = float(df.loc[date, "Close"])
-
-        # Get integer index into the dataframe
         iloc_idx = df.index.get_loc(date)
         prev_pos = log.data["current_position"]
 
-        # Get signal using fast direct-state approach
         action, conf, features = get_ai_signal(brain, df, target_idx=iloc_idx, prev_position=prev_pos)
+        if action is None: continue
 
-        if action is None:
-            continue
-
-        # Record signal
         log.add_signal(date_str, action, price, conf, features)
-
-        # Execute trade
-        trade = execute_paper_trade(log, action, price, date_str)
-
-        # Update equity
+        execute_paper_trade(log, action, price, date_str)
         calculate_daily_pnl(log, df)
         log.update_equity(date_str, price)
 
-        trade_str = ""
-        if trade:
-            trade_str = f"{trade['from']}->{trade['to']}"
-
-        pnl = log.current_pnl_pct
-        print(f"  {str(date_str):>12s}  {price:>10,.2f}  {ACTION_NAMES[action]:>8s}  {trade_str:>15s}  "
-              f"Rs {log.data['current_capital']:>11,.2f}  {pnl:>+7.2f}%")
-
     log.save()
-
-    # Summary
-    print(f"\n  {'=' * 60}")
-    print(f"  BACKFILL SUMMARY")
-    print(f"  {'=' * 60}")
-    print(f"  Period:         {trade_dates[0].date()} to {trade_dates[-1].date()}")
-    print(f"  Trading Days:   {len(trade_dates)}")
-    print(f"  Initial Capital: Rs {INITIAL_CAPITAL:>12,.2f}")
-    print(f"  Final Capital:   Rs {log.data['current_capital']:>12,.2f}")
-    print(f"  Total P&L:       {log.current_pnl_pct:>+8.2f}%")
-    print(f"  Total Trades:    {log.total_trades}")
-    print(f"  Total Signals:   {log.total_signals}")
-
-    # Buy and hold comparison
-    first_price = float(df.loc[trade_dates[0], "Close"])
-    last_price = float(df.loc[trade_dates[-1], "Close"])
-    bah_return = ((last_price / first_price) - 1) * 100
-    print(f"\n  NIFTY50 B&H:     {bah_return:>+8.2f}%")
-    print(f"  AI Alpha:        {log.current_pnl_pct - bah_return:>+8.2f}%")
-    print(f"\n  Trade log saved: {TRADE_LOG_FILE}")
+    print(f"\n  Backfill complete. Final P&L: {log.current_pnl_pct:>+8.2f}%")
 
 
 def cmd_dashboard(log):
-    """Display full portfolio dashboard."""
+    """Display portfolio dashboard."""
     print("\n" + "=" * 70)
     print("  NIFTY50 AI - PAPER TRADING DASHBOARD")
     print("=" * 70)
-
-    print(f"\n  --- Portfolio ---")
-    print(f"  Initial Capital: Rs {log.data['initial_capital']:>12,.2f}")
-    print(f"  Current Capital: Rs {log.data['current_capital']:>12,.2f}")
+    print(f"\n  Current Capital: Rs {log.data['current_capital']:>12,.2f}")
     print(f"  Total P&L:       {log.current_pnl_pct:>+8.2f}%")
     print(f"  Position:        {ACTION_NAMES[log.data['current_position']]}")
-    print(f"  Total Trades:    {log.total_trades}")
-    print(f"  Total Signals:   {log.total_signals}")
-
-    # Recent signals
-    if log.data["daily_signals"]:
-        print(f"\n  --- Last 10 Signals ---")
-        print(f"  {'Date':>12s}  {'Price':>10s}  {'Signal':>8s}")
-        print(f"  {'-'*12}  {'-'*10}  {'-'*8}")
-        for s in log.data["daily_signals"][-10:]:
-            print(f"  {s['date']:>12s}  {s['price']:>10,.2f}  {s['action_name']:>8s}")
-
-    # Recent trades
-    if log.data["trades"]:
-        print(f"\n  --- Trade History ---")
-        print(f"  {'Date':>12s}  {'From':>8s}  {'To':>8s}  {'Price':>10s}  {'Cost':>10s}")
-        print(f"  {'-'*12}  {'-'*8}  {'-'*8}  {'-'*10}  {'-'*10}")
-        for t in log.data["trades"][-15:]:
-            print(f"  {t['date']:>12s}  {t['from']:>8s}  {t['to']:>8s}  "
-                  f"{t['price']:>10,.2f}  Rs {t['cost']:>7,.2f}")
-
-    # Equity curve
-    if log.data["equity_curve"]:
-        print(f"\n  --- Equity Curve ---")
-        ec = log.data["equity_curve"]
-        if len(ec) > 10:
-            # Show first 3, ..., last 5
-            for e in ec[:3]:
-                print(f"  {e['date']:>12s}  Rs {e['equity']:>12,.2f}")
-            print(f"  {'...':>12s}")
-            for e in ec[-5:]:
-                print(f"  {e['date']:>12s}  Rs {e['equity']:>12,.2f}")
-        else:
-            for e in ec:
-                print(f"  {e['date']:>12s}  Rs {e['equity']:>12,.2f}")
-
-    print(f"\n  Log file: {TRADE_LOG_FILE}")
     print("=" * 70)
 
 
 def cmd_schedule(brain, log):
-    """Run signal generation daily at 3:45 PM IST (after market close)."""
-    print("\n" + "=" * 70)
-    print("  NIFTY50 AI - DAILY SCHEDULER")
-    print("  Running signal at 3:45 PM IST (after NSE market close)")
-    print("  Press Ctrl+C to stop")
-    print("=" * 70)
-
-    TARGET_HOUR = 15
-    TARGET_MINUTE = 45
-
+    """Daily scheduler."""
+    print("  Scheduler active. Press Ctrl+C to stop.")
     while True:
         now = datetime.datetime.now()
-        target = now.replace(hour=TARGET_HOUR, minute=TARGET_MINUTE, second=0)
+        if now.hour == 15 and now.minute == 45:
+            if now.weekday() < 5:
+                cmd_signal(brain, log)
+            time.sleep(60)
+        time.sleep(30)
 
-        if now > target:
-            # Already past today's target, schedule for tomorrow
-            target += datetime.timedelta(days=1)
-
-        wait_seconds = (target - now).total_seconds()
-        print(f"\n  Next signal at: {target.strftime('%Y-%m-%d %H:%M')} "
-              f"(in {wait_seconds/3600:.1f} hours)")
-
-        # Wait until target time
-        while datetime.datetime.now() < target:
-            time.sleep(30)
-
-        # Skip weekends
-        if target.weekday() >= 5:
-            print(f"  [SKIP] Weekend - no market today")
-            continue
-
-        print(f"\n  [RUN] Generating signal at {datetime.datetime.now().strftime('%H:%M:%S')}")
-        try:
-            cmd_signal(brain, log)
-        except Exception as e:
-            print(f"  [ERROR] {e}")
-
-
-# ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="NIFTY50 AI Live Paper Trader")
-    parser.add_argument("--backfill", type=int, default=0,
-                        help="Simulate last N trading days")
-    parser.add_argument("--dashboard", action="store_true",
-                        help="Show portfolio dashboard")
-    parser.add_argument("--schedule", action="store_true",
-                        help="Auto-run daily at 3:45 PM IST")
-    parser.add_argument("--reset", action="store_true",
-                        help="Reset trade log")
-    parser.add_argument("--brain", default=BRAIN_FILE,
-                        help="Path to brain pickle file")
+    parser.add_argument("--backfill", type=int, default=0)
+    parser.add_argument("--dashboard", action="store_true")
+    parser.add_argument("--schedule", action="store_true")
+    parser.add_argument("--reset", action="store_true")
+    parser.add_argument("--brain", default=BRAIN_FILE)
     args = parser.parse_args()
 
-    brain_path = args.brain
-    if not os.path.isabs(brain_path):
-        brain_path = os.path.join(ROOT_DIR, brain_path)
-
-    if not os.path.exists(brain_path):
-        print(f"[ERROR] Brain file not found: {brain_path}")
-        sys.exit(1)
-
-    with open(brain_path, "rb") as f:
-        brain = pickle.load(f)
-
     log = TradeLog()
-
     if args.reset:
-        if os.path.exists(TRADE_LOG_FILE):
-            os.remove(TRADE_LOG_FILE)
-            print("[OK] Trade log reset.")
+        if os.path.exists(TRADE_LOG_FILE): os.remove(TRADE_LOG_FILE)
         log = TradeLog()
 
-    if args.dashboard:
-        cmd_dashboard(log)
-    elif args.backfill > 0:
-        cmd_backfill(brain, log, args.backfill)
-    elif args.schedule:
-        cmd_schedule(brain, log)
-    else:
-        cmd_signal(brain, log)
+    if not os.path.exists(args.brain):
+        print(f"[ERROR] Brain not found: {args.brain}")
+        sys.exit(1)
 
+    with open(args.brain, "rb") as f:
+        brain = pickle.load(f)
+
+    if args.dashboard: cmd_dashboard(log)
+    elif args.backfill > 0: cmd_backfill(brain, log, args.backfill)
+    elif args.schedule: cmd_schedule(brain, log)
+    else: cmd_signal(brain, log)
 
 if __name__ == "__main__":
     main()

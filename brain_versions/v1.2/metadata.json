@@ -1,0 +1,28 @@
+{
+  "version": "v1.2",
+  "created": "2026-04-05T15:40:36.478129",
+  "ticker": "^NSEI",
+  "metrics": {
+    "train": {
+      "gen": 200,
+      "fitness": -19.920961744775845,
+      "sharpe": -2.393762938591774,
+      "sortino": -3.45694917691095,
+      "max_dd": 0.026391486027749652,
+      "return": -1.2343973408448172,
+      "trades": 8
+    },
+    "holdout_old": {},
+    "holdout_new": {},
+    "gatekeeper_passed": true
+  },
+  "config": {
+    "months": 6,
+    "generations": 200,
+    "mutation": 0.05,
+    "holdout_days": 20,
+    "force_promote": true,
+    "train_period": "2025-11-17 to 2026-03-02",
+    "holdout_period": "2026-02-03 to 2026-04-02"
+  }
+}

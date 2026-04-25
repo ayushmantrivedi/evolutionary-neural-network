@@ -215,7 +215,18 @@ with open(report_file, 'w') as f:
 
 print(f"✅ Brain saved: {brain_file} ({os.path.getsize(brain_file)/1024:.1f} KB)")
 print(f"✅ Report saved: {report_file}")
-print("\n📥 Download these files from Colab Files panel (folder icon on left)")
+
 print("\n🎯 Then run locally:")
-print(f"   python validate_colab_brain.py {brain_file}")
+print(f"   python extract_brain.py")
 print("\n" + "="*80)
+
+# ============================================================================
+# CELL 3: DOWNLOAD FILES (Run this cell after training finishes)
+# ============================================================================
+try:
+    from google.colab import files
+    print("📥 Initiating automatic download to your PC...")
+    files.download('ultimate_brain_colab.pkl')
+    files.download('training_report.txt')
+except ImportError:
+    print("Not running in Colab, please copy files manually.")

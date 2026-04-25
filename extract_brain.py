@@ -1,4 +1,4 @@
-zAZAZAZAZAZAZA"""
+"""
 extract_brain.py
 Extracts pure numpy weights from the brain pickle (which requires evonet)
 and saves them as brain_weights.pkl — a plain dict loadable with just numpy.
@@ -9,7 +9,7 @@ sys.path.insert(0, '.')
 
 # Load the full brain (requires evonet, works locally)
 print("Loading brain...")
-with open('nifty50_brain_validated.pkl', 'rb') as f:
+with open('brain_versions/ultimate_brain_colab.pkl', 'rb') as f:
     brain = pickle.load(f)
 print(f"Loaded: {type(brain).__name__}  pop_size={brain.pop_size}")
 
