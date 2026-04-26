@@ -343,9 +343,17 @@ def build_message(log, action, price, today, drawdown, features, df=None):
     # Weekend Insight (Friday)
     strat = features.get("strategy", "CASH")
     regime = features.get("regime", "Normal")
+    vix = features.get("vix", 0)
+    pos_size = features.get("pos_size", 0.5)
     
+    msg_lines.append("")
     msg_lines.append(f"🛠️ <b>Strategy:</b> {strat}")
     msg_lines.append(f"🌐 <b>Regime:</b> {regime}")
+    msg_lines.append(f"📏 <b>Size:</b> {pos_size*100:.1f}% Exposure")
+    
+    # 🏛️ Alpha Metrics
+    vix_data = f" (VIX: {vix:.1f})"
+    msg_lines.append(f"🏛️ <b>Context:</b> {regime}{vix_data}")
 
     if df is not None:
         try:
