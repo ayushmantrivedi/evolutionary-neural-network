@@ -104,6 +104,20 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df["Est_Spread_Pct"]   = (h - l) / c
 
     df.fillna(0, inplace=True)
+    
+    # 9. India VIX & VRP (Structural)
+    try:
+        vix_data = yf.download("^INDIAVIX", start=df.index[0].date().isoformat(), progress=False)
+        if isinstance(vix_data.columns, pd.MultiIndex): vix_data.columns = vix_data.columns.get_level_values(0)
+        df["VIX_Level"] = vix_data["Close"].reindex(df.index, method='ffill') / 100.0
+        rv = df["Log_Ret"].rolling(20).std() * np.sqrt(252)
+        df["VRP"] = (df["VIX_Level"] - rv).fillna(0)
+    except:
+        df["VIX_Level"], df["VRP"] = 0.15, 0.0
+
+    # 10. DTE (Structural)
+    df["DTE_Norm"] = [(3 - d.weekday()) % 7 / 7.0 for d in df.index]
+
     return df
 
 FEATURE_COLS = [
@@ -141,7 +155,21 @@ def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
     pos_ch = np.full((WINDOW_SIZE, 1), float(prev_position - 1), dtype=np.float32)
     state  = np.nan_to_num(np.hstack([obs, pos_ch]).flatten())       # (200,)
     probs  = forward_pass(brain['neurons'], state)
-    return int(np.argmax(probs))
+    action = int(np.argmax(probs))
+    
+    # --- STRATEGY LAYER: Strategy Decision Matrix ---
+    latest = df.iloc[-1]
+    vix = latest.get("VIX_Level", 0.15) * 100
+    strategy, regime = "CASH", "Normal"
+    
+    if action == 2:
+        strategy, regime = ("LONG CALL / FUTURES", "Low Vol Trend") if vix < 18 else ("BULL PUT SPREAD", "High Vol Trend (VRP)")
+    elif action == 0:
+        strategy, regime = ("LONG PUT / FUTURES", "Low Vol Trend") if vix < 18 else ("BEAR CALL SPREAD", "High Vol Trend (VRP)")
+    elif action == 1:
+        strategy, regime = ("IRON FLY / STRADDLE", "High Vol Mean-Reversion") if vix > 20 else ("CASH", "Low Vol Chop")
+
+    return action, {"strategy": strategy, "regime": regime, "vix": vix}
 
 
 # ── Trade log ─────────────────────────────────────────────────────────────────
@@ -264,7 +292,7 @@ def get_market_regime(df: pd.DataFrame) -> str:
         
     return "\n".join(insights)
 
-def build_message(log, action, price, today, drawdown, df=None):
+def build_message(log, action, price, today, drawdown, features, df=None):
     cap     = log["current_capital"]
     pnl_pct = ((cap / log["initial_capital"]) - 1) * 100
     pnl_rs  = cap - log["initial_capital"]
@@ -294,6 +322,12 @@ def build_message(log, action, price, today, drawdown, df=None):
     ]
 
     # Weekend Insight (Friday)
+    strat = features.get("strategy", "CASH")
+    regime = features.get("regime", "Normal")
+    
+    msg_lines.append(f"🛠️ <b>Strategy:</b> {strat}")
+    msg_lines.append(f"🌐 <b>Regime:</b> {regime}")
+
     if df is not None:
         try:
             dt_obj = datetime.datetime.fromisoformat(today)
@@ -358,9 +392,10 @@ def main():
     if drawdown > 0.10:
         print(f"      [SAFETY] Drawdown {drawdown:.1%} exceeds limit. Neutralizing.")
         action = 1 # Force Neutral
+        features = {"strategy": "EMERGENCY_CASH", "regime": "Risk Off", "vix": 0}
         msg_prefix = "⚠️ <b>SAFETY OVERRIDE ACTIVE</b>\n"
     else:
-        action = get_signal(brain, df, prev_action)
+        action, features = get_signal(brain, df, prev_action)
         msg_prefix = ""
 
     print(f"      Signal: {ACTION_NAMES[action]}  @  ₹{price:,.2f}")
@@ -372,7 +407,7 @@ def main():
     pnl = ((log["current_capital"] / log["initial_capital"]) - 1) * 100
     print(f"      Capital: ₹{log['current_capital']:,.2f}  P&L: {pnl:+.2f}%")
 
-    msg = build_message(log, action, price, today, drawdown, df)
+    msg = build_message(log, action, price, today, drawdown, features, df)
     if msg_prefix:
         msg = msg_prefix + msg
     

@@ -144,6 +144,54 @@ class RiskRegimeFeature:
         
         return df
 
+@AlphaFactory.register("volatility_edge_vix")
+class VolatilityRiskPremiumFeature:
+    """
+    Captures the Volatility Risk Premium (VRP).
+    VIX represents Implied Vol, while Rolling Std represents Realized Vol.
+    """
+    def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
+        try:
+            import yfinance as yf
+            # Fetch India VIX for the period in df
+            start = df.index[0] - pd.Timedelta(days=30)
+            end = df.index[-1] + pd.Timedelta(days=1)
+            vix_data = yf.download("^INDIAVIX", start=str(start.date()), end=str(end.date()), progress=False)
+            
+            if isinstance(vix_data.columns, pd.MultiIndex):
+                vix_data.columns = vix_data.columns.get_level_values(0)
+            
+            vix_c = vix_data["Close"].reindex(df.index, method='ffill')
+            df['VIX_Level'] = vix_c / 100.0
+            
+            # Calculate Realized Vol (20-day annualized)
+            log_ret = np.log(df['Close'] / df['Close'].shift(1))
+            rv = log_ret.rolling(20).std() * np.sqrt(252)
+            
+            # VRP = IV - RV
+            df['VRP'] = (df['VIX_Level'] - rv).fillna(0)
+        except Exception as e:
+            logger.error(f"Failed to fetch VIX data: {e}")
+            df['VIX_Level'] = 0.15 # Default
+            df['VRP'] = 0
+        return df
+
+@AlphaFactory.register("time_decay_dte")
+class TimeDecayFeature:
+    """
+    Calculates Days to Expiry (DTE) for NIFTY weekly options (Thursday).
+    Critical for structural awareness.
+    """
+    def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
+        def get_dte(dt):
+            # Thursday is 3 (Mon=0, Tue=1, Wed=2, Thu=3)
+            days_to_thu = (3 - dt.weekday()) % 7
+            return float(days_to_thu) / 7.0 # Normalized 0 to 1
+            
+        df['DTE_Norm'] = [get_dte(d) for d in df.index]
+        return df
+
+
 if __name__ == "__main__":
     # Test stub
     data = pd.DataFrame({
