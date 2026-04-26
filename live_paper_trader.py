@@ -43,8 +43,9 @@ BRAIN_FILE = os.path.join(ROOT_DIR, "nifty50_brain_validated.pkl")
 TRADE_LOG_FILE = os.path.join(ROOT_DIR, "paper_trades.json")
 WINDOW_SIZE = 20
 LOOKBACK_DAYS = 60
-FEE_PCT = 0.0007
-SLIPPAGE_PCT = 0.0003
+FEE_PCT = 0.0005 # 0.05% Exchange + Brokerage
+SLIPPAGE_PCT = 0.0045 # 0.45% Slippage (Options realism)
+# TOTAL COST: 0.5% per trade (Realistic India Context)
 INITIAL_CAPITAL = 1000000
 
 ACTION_NAMES = {0: "SHORT", 1: "NEUTRAL", 2: "LONG"}
@@ -122,7 +123,10 @@ def fetch_recent_data(days_back=LOOKBACK_DAYS + WINDOW_SIZE + 10):
     if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
     if df.index.tz is not None: df.index = df.index.tz_convert(None)
     df = AlphaFactory.apply_all(df)
+    before_drop = len(df)
     df.dropna(inplace=True)
+    if len(df) < before_drop:
+        print(f"  [WARN] Dropped {before_drop - len(df)} rows due to NaNs in indicators.")
     return df
 
 def get_ai_signal(brain, df, target_idx=None, prev_position=1):
@@ -151,19 +155,88 @@ def get_ai_signal(brain, df, target_idx=None, prev_position=1):
         latest = df.iloc[end_idx - 1]
         features = {"close": round(float(latest["Close"]), 2)}
         
-        # --- STRATEGY LAYER: v2.0 Decision Matrix ---
+        # --- DIRECTIONAL CONFIRMATION LAYER (v2.1) ---
         vix = latest.get("VIX_Level", 0.15) * 100
         dte = latest.get("DTE_Norm", 0.5)
-        strategy, regime = "CASH", "Normal"
-        if action == 2:
-            strategy, regime = ("LONG CALL / FUTURES", "Low Vol Trend") if vix < 18 else ("BULL PUT SPREAD", "High Vol Trend (VRP)")
-        elif action == 0:
-            strategy, regime = ("LONG PUT / FUTURES", "Low Vol Trend") if vix < 18 else ("BEAR CALL SPREAD", "High Vol Trend (VRP)")
-        elif action == 1:
-            strategy, regime = ("IRON FLY / STRADDLE", "High Vol Mean-Reversion") if vix > 20 else ("CASH", "Low Vol Chop")
+        # --- DIRECTIONAL & STRUCTURAL CONFIRMATION (v2.2 ALPHA-COMPLETE) ---
+        vix = latest.get("VIX_Level", 0.15) * 100
+        vix_rank = latest.get("VIX_Rank", 0.5)
+        vrp = latest.get("VRP", 0)
+        atr_slope = latest.get("ATR_Slope", 0)
         
-        features.update({"strategy": strategy, "regime": regime, "vix": round(vix, 2), "dte_pct": round(dte * 100, 1)})
-        return action, 0.7, features
+        sma_slope = latest.get("SMA20_Slope", 0)
+        dist_sma = latest.get("Dist_SMA20", 0)
+        sma5 = latest.get("SMA5", latest["Close"])
+        low_5d = latest.get("Low_5d", latest["Close"])
+        
+        # 1. Structural Trend Detection (Multi-Anchor)
+        # BULL: Price > SMA5 AND Price > Low_5d
+        is_bull_regime = (latest["Close"] > sma5) and (latest["Close"] > low_5d)
+        
+        # BEAR: Price < Low_5d (Breakdown) OR (Price < SMA5 AND Slope < 0)
+        is_bear_regime = (latest["Close"] < low_5d) or (latest["Close"] < sma5 and sma_slope < 0)
+        
+        # 2. Volatility Edge Extraction (VRP)
+        has_vrp_edge = vrp > 0.02 # IV is overpriced compared to Realized Vol
+        
+        # 3. Active Bias Determination & Monetization
+        final_action = action
+        
+        # ACTIVE SHORTING / MONETIZATION: 
+        # If structural floor is broken (Price < Low_5d) -> FORCE SHORT (0) to monetize downside
+        if latest["Close"] < low_5d:
+            final_action = 0 
+            regime = "Bearish Breakdown"
+        # If in Bear Regime but not a full breakdown yet -> Neutralize Longs
+        elif is_bear_regime and action == 2:
+            final_action = 1 
+            regime = "Bearish Transition"
+        # BULLISH: Only allow Long if price structure is healthy
+        elif is_bull_regime and action == 2:
+            final_action = 2
+            
+        # 4. Strategy Router (Dynamic)
+        # Decision: Fast Move (ATR Spike) -> Directional (Gamma) | Slow Move -> Structural (Theta/VRP)
+        is_fast_move = atr_slope > 0.05 or abs(latest["Log_Ret"]) > 0.015
+        strategy, regime = "CASH", "Neutral"
+        
+        if final_action == 2: # LONG
+            if is_fast_move:
+                strategy, regime = "LONG CALL / FUTURES", "Momentum Long"
+            else:
+                strategy, regime = "BULL PUT SPREAD", "Structural Long"
+        
+        elif final_action == 0: # SHORT
+            if is_fast_move:
+                strategy, regime = "LONG PUT / FUTURES", "Momentum Short"
+            else:
+                strategy, regime = "BEAR CALL SPREAD", "Structural Short"
+        
+        # 5. Position Sizing Engine
+        # size = base_capital * regime_score * (1 / vol)
+        # Normalized Vol: (VIX / 20)
+        vol_scalar = 1.0 / (vix / 18.0) # Reduce size as VIX rises
+        regime_score = 1.0 if (is_bull_regime or is_bear_regime) else 0.5
+        pos_size_pct = min(1.0, 0.5 * regime_score * vol_scalar) # Max 50% exposure per trade
+        
+        # 6. PREDICTIVE KILL-SWITCH (Risk Expansion)
+        vix_prev = df.iloc[end_idx - 2].get("VIX_Level", 0.15) * 100
+        vix_spike = (vix - vix_prev) / vix_prev if vix_prev > 0 else 0
+        
+        if vix > 30 or (vix_spike > 0.12 and atr_slope > 0.05):
+            final_action = 1
+            strategy, regime = "CASH (SAFETY)", "Extreme Stress Expansion"
+
+        features.update({
+            "strategy": strategy, 
+            "regime": regime, 
+            "vix": round(vix, 2),
+            "vix_rank": round(vix_rank * 100, 1),
+            "vrp_edge": round(vrp * 100, 2),
+            "pos_size_pct": round(pos_size_pct * 100, 1),
+            "trend": "BULL" if is_bull_regime else ("BEAR" if is_bear_regime else "CHOP")
+        })
+        return final_action, pos_size_pct, features
     except Exception as e:
         print(f"  [WARN] Signal generation error: {e}"); return None, 0, {}
 
@@ -172,6 +245,7 @@ def execute_paper_trade(log, action, price, date):
     if action == current: return None
     cost = log.data["current_capital"] * (FEE_PCT + SLIPPAGE_PCT)
     log.data["current_capital"] -= cost
+    # We don't store pos_size in trade log yet, it's inferred from signals
     return log.add_trade(date, current, action, price, cost)
 
 def calculate_daily_pnl(log, df):
@@ -180,10 +254,13 @@ def calculate_daily_pnl(log, df):
     cap, pos = log.data["initial_capital"], 1
     for i in range(1, len(signals)):
         prev, curr = signals[i-1], signals[i]
+        size = curr.get("confidence", 1.0) # Use confidence as pos_size
         if curr["action"] != pos:
             cap -= cap * (FEE_PCT + SLIPPAGE_PCT)
             pos = curr["action"]
-        if prev["price"] > 0: cap *= (1 + (pos - 1) * (curr["price"] - prev["price"]) / prev["price"])
+        if prev["price"] > 0: 
+            ret = (pos - 1) * (curr["price"] - prev["price"]) / prev["price"]
+            cap *= (1 + ret * size)
     log.data["current_capital"] = round(cap, 2)
     log.data["current_position"] = pos
 
@@ -209,6 +286,55 @@ def cmd_signal(brain, log):
     if trade: print(f"\n  >> TRADE: {trade['from']} -> {trade['to']}")
     print(f"\n  Capital: Rs {log.data['current_capital']:,.2f} | P&L: {log.current_pnl_pct:>+8.2f}%")
 
+def cmd_backfill(brain, log, days):
+    """Simulate trading over the last N days with v2.0 Structural Logic."""
+    print("\n" + "=" * 80)
+    print(f"  NIFTY50 AI v2.0 - BACKFILL SIMULATION ({days} DAYS)")
+    print("=" * 80)
+
+    # Reset for simulation
+    log.data.update({"current_capital": INITIAL_CAPITAL, "current_position": 1, "trades": [], "daily_signals": [], "equity_curve": []})
+    
+    df = fetch_recent_data(days_back=days + WINDOW_SIZE + 40)
+    print(f"  [DEBUG] Fetched {len(df)} total days for simulation.")
+    start_idx = max(WINDOW_SIZE + 5, len(df) - days)
+    trade_dates = df.index[start_idx:]
+    print(f"  [DEBUG] Simulating from {trade_dates[0].date()} to {trade_dates[-1].date()} ({len(trade_dates)} days)")
+
+    print(f"\n  {'Date':<12} | {'NIFTY':<10} | {'VIX':<6} | {'Signal':<8} | {'Strategy':<22} | {'P&L':<8}")
+    print(f"  {'-'*12} | {'-'*10} | {'-'*6} | {'-'*8} | {'-'*22} | {'-'*8}")
+
+    for date in trade_dates:
+        date_str = date.date()
+        price = float(df.loc[date, "Close"])
+        iloc_idx = df.index.get_loc(date)
+        prev_pos = log.data["current_position"]
+
+        action, conf, feat = get_ai_signal(brain, df, target_idx=iloc_idx, prev_position=prev_pos)
+        if action is None: continue
+        
+        # Debug Trend
+        trend_label = feat.get("trend", "SIDE")
+        vix = feat.get("vix", 0)
+        slope = df.iloc[iloc_idx].get("SMA20_Slope", 0)
+        dist = df.iloc[iloc_idx].get("Dist_SMA20", 0)
+        print(f"  [DEBUG] {date_str} | Trend: {trend_label} | Slope: {slope:.5f} | Dist: {dist:.5f}")
+
+        log.add_signal(date_str, action, price, conf, feat)
+        execute_paper_trade(log, action, price, date_str)
+        calculate_daily_pnl(log, df)
+        
+        strat = feat.get("strategy", "CASH")
+        vix = feat.get("vix", 0)
+        pnl = log.current_pnl_pct
+        
+        print(f"  {str(date_str):<12} | {price:10,.2f} | {vix:6.2f} | {ACTION_NAMES[action]:<8} | {strat:<22} | {pnl:>+7.2f}%")
+
+    log.save()
+    print("\n" + "=" * 80)
+    print(f"  Simulation Complete. Final Capital: Rs {log.data['current_capital']:,.2f} ({log.current_pnl_pct:>+8.2f}%)")
+    print("=" * 80)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--backfill", type=int, default=0)
@@ -221,6 +347,7 @@ def main():
     if not os.path.exists(BRAIN_FILE): print("Brain missing"); sys.exit(1)
     with open(BRAIN_FILE, "rb") as f: brain = pickle.load(f)
     if args.dashboard: print(f"Capital: Rs {log.data['current_capital']:,.2f}")
+    elif args.backfill > 0: cmd_backfill(brain, log, args.backfill)
     elif args.schedule:
         while True:
             if datetime.datetime.now().hour == 15 and datetime.datetime.now().minute == 45: cmd_signal(brain, log); time.sleep(60)

@@ -191,6 +191,38 @@ class TimeDecayFeature:
         df['DTE_Norm'] = [get_dte(d) for d in df.index]
         return df
 
+@AlphaFactory.register("price_structure_trend")
+class PriceStructureFeature:
+    """
+    Objectively determines price direction using SMA slopes and structure.
+    Essential for breaking the 'Permabull' bias.
+    """
+    def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
+        # 1. Slope of SMA20 (Short-term trend)
+        sma20 = ta.sma(df['Close'], length=20)
+        df['SMA20_Slope'] = sma20.diff(3) / sma20.shift(3) 
+        
+        # 2. Tactical SMA5
+        df['SMA5'] = ta.sma(df['Close'], length=5)
+        
+        # 3. Distance from SMA20
+        df['Dist_SMA20'] = (df['Close'] - sma20) / sma20
+        
+        # 3. Market Breadth / Pressure (Price vs High/Low range)
+        df['Price_Position_Pct'] = (df['Close'] - df['Low']) / (df['High'] - df['Low'])
+        
+        # 4. Volatility Expansion (Predictive)
+        df['ATR_Slope'] = df['ATR_Pct'].diff(3) / df['ATR_Pct'].shift(3)
+        
+        # 5. IV Percentile (Market Sentiment Context)
+        vix = df['VIX_Level']
+        df['VIX_Rank'] = vix.rolling(252).rank(pct=True)
+        
+        # 6. Structural Floor (Support detection - shifted to avoid lookahead)
+        df['Low_5d'] = df['Low'].rolling(5).min().shift(1)
+        
+        return df.fillna(0)
+
 
 if __name__ == "__main__":
     # Test stub

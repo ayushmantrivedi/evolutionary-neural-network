@@ -27,7 +27,8 @@ BRAIN_FILE      = os.path.join(ROOT_DIR, "brain_weights.pkl")   # portable numpy
 TRADE_LOG_FILE  = os.path.join(ROOT_DIR, "paper_trades.json")
 WINDOW_SIZE     = 20
 LOOKBACK_DAYS   = 120          # fetch extra buffer for indicator warmup
-FEE_PCT         = 0.0007
+FEE_PCT         = 0.0005
+SLIPPAGE_PCT    = 0.0045 # 0.5% Total realistic cost per trade
 INITIAL_CAPITAL = 1_000_000    # Rs 10 Lakh
 
 ACTION_NAMES = {0: "SHORT", 1: "NEUTRAL", 2: "LONG"}
@@ -117,6 +118,14 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     # 10. DTE (Structural)
     df["DTE_Norm"] = [(3 - d.weekday()) % 7 / 7.0 for d in df.index]
+    
+    # 11. Trend Structure (Directional Confirmation)
+    sma20 = df["Close"].rolling(20).mean()
+    df["SMA20_Slope"] = sma20.diff(3) / sma20.shift(3)
+    df["Dist_SMA20"] = (df["Close"] - sma20) / sma20
+    
+    # 12. Structural Floor (Support - Shifted)
+    df["Low_5d"] = df["Low"].rolling(5).min().shift(1)
 
     return df
 
@@ -157,19 +166,29 @@ def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
     probs  = forward_pass(brain['neurons'], state)
     action = int(np.argmax(probs))
     
-    # --- STRATEGY LAYER: Strategy Decision Matrix ---
-    latest = df.iloc[-1]
-    vix = latest.get("VIX_Level", 0.15) * 100
-    strategy, regime = "CASH", "Normal"
+    # 4. Strategy Router (Dynamic)
+    is_fast_move = latest.get("ATR_Slope", 0) > 0.05 or abs(latest.get("Log_Ret", 0)) > 0.015
     
-    if action == 2:
-        strategy, regime = ("LONG CALL / FUTURES", "Low Vol Trend") if vix < 18 else ("BULL PUT SPREAD", "High Vol Trend (VRP)")
-    elif action == 0:
-        strategy, regime = ("LONG PUT / FUTURES", "Low Vol Trend") if vix < 18 else ("BEAR CALL SPREAD", "High Vol Trend (VRP)")
-    elif action == 1:
-        strategy, regime = ("IRON FLY / STRADDLE", "High Vol Mean-Reversion") if vix > 20 else ("CASH", "Low Vol Chop")
+    if final_action == 2: # LONG
+        strategy, regime = ("LONG CALL / FUTURES", "Momentum Long") if is_fast_move else ("BULL PUT SPREAD", "Structural Long")
+    elif final_action == 0: # SHORT
+        strategy, regime = ("LONG PUT / FUTURES", "Momentum Short") if is_fast_move else ("BEAR CALL SPREAD", "Structural Short")
+    elif final_action == 1:
+        strategy, regime = ("IRON FLY / STRADDLE", "High Vol Range") if vix > 20 else ("CASH", "Low Vol Range")
+        
+    # 5. Position Sizing Engine
+    vol_scalar = 1.0 / (vix / 18.0)
+    regime_score = 1.0 if (is_bull_regime or is_bear_regime) else 0.5
+    pos_size_pct = min(1.0, 0.5 * regime_score * vol_scalar)
+        
+    # Hard Kill-Switch
+    vix_prev = df.iloc[-2].get("VIX_Level", 0.15) * 100
+    vix_spike = (vix - vix_prev) / vix_prev if vix_prev > 0 else 0
+    if vix > 30 or (vix_spike > 0.12 and latest.get("ATR_Slope", 0) > 0.05):
+        final_action = 1
+        strategy, regime = "CASH (SAFETY)", "Extreme Stress Expansion"
 
-    return action, {"strategy": strategy, "regime": regime, "vix": vix}
+    return final_action, {"strategy": strategy, "regime": regime, "vix": vix, "pos_size": pos_size_pct}
 
 
 # ── Trade log ─────────────────────────────────────────────────────────────────
