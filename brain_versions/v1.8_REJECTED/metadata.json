@@ -1,0 +1,45 @@
+{
+  "version": "v1.8",
+  "status": "REJECTED",
+  "metrics": {
+    "train": {
+      "gen": 100,
+      "fitness": -16.591893692472524,
+      "sharpe": -1.1576504438487243,
+      "sortino": -1.8212235397579175,
+      "max_dd": 0.04693876253469583,
+      "return": -1.802706813378241,
+      "trades": 7,
+      "div_penalty": 0.0
+    },
+    "holdout_old": {
+      "sharpe": -3.273204871999472,
+      "sortino": -4.955706070281703,
+      "max_dd": 0.0724317426461458,
+      "return": -3.540064396053766,
+      "trades": 1,
+      "div_penalty": 0.0,
+      "fitness": -39.45934351198693
+    },
+    "holdout_new": {
+      "sharpe": -3.4347941097178176,
+      "sortino": -5.292564486982843,
+      "max_dd": 0.0724317426460255,
+      "return": -3.706142765306464,
+      "trades": 1,
+      "div_penalty": 0.0,
+      "fitness": -40.80970507443787
+    },
+    "gatekeeper_passed": false
+  },
+  "config": {
+    "months": 6,
+    "generations": 100,
+    "mutation": 0.1,
+    "holdout_days": 20,
+    "force_promote": false,
+    "train_period": "2025-10-23 to 2026-03-23",
+    "holdout_period": "2026-02-23 to 2026-04-24"
+  },
+  "created": "2026-04-26T12:01:23.908315"
+}

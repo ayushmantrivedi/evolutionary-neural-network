@@ -138,10 +138,17 @@ def get_ai_signal(brain, df, target_idx=None, prev_position=1):
     if end_idx < WINDOW_SIZE + 1: return None, 0, {}
 
     try:
-        feature_cols = [c for c in df.columns if c not in ['Open', 'High', 'Low', 'Close', 'Volume', 'Date', 'Adj Close', 'Adj_Close']]
+        # --- CURATED FEATURE SELECTION (v2.5) ---
+        # We pick the 10 most powerful features for the brain's internal logic
+        elite_cols = [
+            'Log_Ret', 'ADX', 'ATR_Pct', 'MACD_Hist', 'VIX_Level', 
+            'VRP', 'DTE_Norm', 'SMA20_Slope', 'Dist_SMA20', 'ATR_Slope'
+        ]
+        # Fallback if any missing
+        feature_cols = [c for c in elite_cols if c in df.columns]
         window_start = end_idx - WINDOW_SIZE
         window_data = df.iloc[window_start:end_idx]
-        obs_features = window_data[feature_cols].values[:, :9]
+        obs_features = window_data[feature_cols].values[:, :9] # Brain expects 9 + 1 pos
         if obs_features.shape != (WINDOW_SIZE, 9):
             padded = np.zeros((WINDOW_SIZE, 9), dtype=np.float32)
             padded[:, :min(9, obs_features.shape[1])] = obs_features[:, :min(9, obs_features.shape[1])]

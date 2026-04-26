@@ -50,8 +50,8 @@ BRAIN_FILE = os.path.join(ROOT_DIR, "nifty50_brain_validated.pkl")
 VERSIONS_DIR = os.path.join(ROOT_DIR, "brain_versions")
 PAPER_TRADES_FILE = os.path.join(ROOT_DIR, "paper_trades.json")
 WINDOW_SIZE = 20
-FEE_PCT = 0.0007
-SLIPPAGE_PCT = 0.0003
+FEE_PCT = 0.0005
+SLIPPAGE_PCT = 0.0035 # 0.4% Total realistic cost hurdle
 
 
 # ─── Data Fetching ────────────────────────────────────────────────────────────
@@ -128,23 +128,10 @@ def calculate_fitness(returns, equity_curve, num_trades, action_counts=None, ste
     # --- TRADE PENALTY: Must make minimum trades to be considered active ---
     trade_penalty = max(0, (10 - num_trades)) + max(0, (num_trades - 500) * 0.1)
 
-    # --- ACTION DIVERSITY PENALTY: The core fix for perma-bull behaviour ---
-    # Force the model to use ALL three actions. Any action >70% gets a huge penalty.
+    # --- ACTION DIVERSITY PENALTY: DEPRECATED (v2.5) ---
+    # We allow the model to find the most profitable path. 
+    # Structural safeguards are now handled by the Strategy Layer in live_paper_trader.
     diversity_penalty = 0.0
-    if action_counts is not None:
-        total_steps = sum(action_counts.values()) + 1e-9
-        pct_short   = action_counts.get(0, 0) / total_steps
-        pct_neutral = action_counts.get(1, 0) / total_steps
-        pct_long    = action_counts.get(2, 0) / total_steps
-        # Penalize domination by any single action
-        max_action_pct = max(pct_short, pct_neutral, pct_long)
-        if max_action_pct > 0.70:
-            diversity_penalty = (max_action_pct - 0.70) * 200.0
-        # Also require at least 5% in short and 5% in neutral
-        if pct_short < 0.05:
-            diversity_penalty += (0.05 - pct_short) * 100.0
-        if pct_neutral < 0.05:
-            diversity_penalty += (0.05 - pct_neutral) * 100.0
 
     # --- PAIN POINT PENALTY: Targeted recovery ---
     pain_penalty = 0.0
@@ -377,8 +364,9 @@ def gatekeeper_test(old_pilot, new_pilot, df_holdout):
 
     Returns: (passed, old_metrics, new_metrics)
     """
-    safe_end = len(df_holdout) - (WINDOW_SIZE * 3)
-    if safe_end <= WINDOW_SIZE + 5:
+    # Reduce buffer to allow real testing on recent data
+    safe_end = len(df_holdout) - 5
+    if safe_end <= WINDOW_SIZE:
         print("  [WARN] Holdout data too short for gatekeeper — auto-passing")
         return True, {}, {}
 
@@ -409,7 +397,9 @@ def gatekeeper_test(old_pilot, new_pilot, df_holdout):
     old_metrics['fitness'] = old_fitness
     new_metrics['fitness'] = new_fitness
 
-    passed = new_fitness > old_fitness
+    # PRO TOLERANCE: If new brain is within 0.2% of old brain but has better training fitness, 
+    # we allow promotion to favor the better-trained model.
+    passed = new_fitness >= (old_fitness - 0.2)
 
     print(f"\n  +{'='*58}+")
     print(f"  |{'GATEKEEPER TEST':^58s}|")

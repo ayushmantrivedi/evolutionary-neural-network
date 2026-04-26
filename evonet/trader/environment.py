@@ -39,16 +39,16 @@ class FinancialRegimeEnv(StocksEnv):
     def _process_data(self):
         prices = self.df.loc[:, 'Close'].to_numpy()
         
-        # Alpha Signals from AlphaFactory
+        # v2.5 CURATED FEATURES (Institutional Alignment)
         log_ret = self.df.loc[:, 'Log_Ret'].to_numpy()
         adx = self.df.loc[:, 'ADX'].to_numpy()
-        macd = self.df.loc[:, 'MACD_Hist'].to_numpy()
-        bb_pct = self.df.loc[:, 'BB_Pct'].to_numpy()
-        obv_slope = self.df.loc[:, 'OBV_Slope'].to_numpy()
         atr_pct = self.df.loc[:, 'ATR_Pct'].to_numpy()
-        kurtosis = self.df.loc[:, 'Kurtosis_20'].to_numpy()
-        dist_sma = self.df.loc[:, 'Distance_SMA200'].to_numpy()
-        log_ret_5d = self.df['Log_Ret'].rolling(5).sum().fillna(0).to_numpy()
+        macd = self.df.loc[:, 'MACD_Hist'].to_numpy()
+        vix = self.df.loc[:, 'VIX_Level'].to_numpy()
+        vrp = self.df.loc[:, 'VRP'].to_numpy()
+        dte = self.df.loc[:, 'DTE_Norm'].to_numpy()
+        sma_slope = self.df.loc[:, 'SMA20_Slope'].to_numpy()
+        dist_sma = self.df.loc[:, 'Dist_SMA20'].to_numpy()
         
         # Keep raw ATR for slippage calculation
         self.atr_raw = self.df.loc[:, 'ATR'].to_numpy()
@@ -61,26 +61,24 @@ class FinancialRegimeEnv(StocksEnv):
         valid_end = len(prices) - self.window_size + 1
         loop_end = min(end, valid_end)
         
-        
-        # FIX: Generate signal_features for ALL valid windows in the data
-        # This ensures signal_features aligns with the prices array
+        # Generate signal_features for ALL valid windows
         signal_features = []
         max_index = len(prices) - self.window_size + 1
         for i in range(max_index):
             ws = i
             we = i + self.window_size
             
-            # Stack features: (Window, Features)
+            # Stack curated v2.5 features: (Window, 9 Features)
             features = np.column_stack([
                 log_ret[ws:we],
                 adx[ws:we],
-                macd[ws:we],
-                bb_pct[ws:we],
-                obv_slope[ws:we],
                 atr_pct[ws:we],
-                kurtosis[ws:we],
-                dist_sma[ws:we],
-                log_ret_5d[ws:we]
+                macd[ws:we],
+                vix[ws:we],
+                vrp[ws:we],
+                dte[ws:we],
+                sma_slope[ws:we],
+                dist_sma[ws:we]
             ])
             signal_features.append(features)
             

@@ -129,16 +129,19 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+# v2.5 ELITE FEATURES (Synced with Brain v1.8)
 FEATURE_COLS = [
-    "Log_Ret", "Log_Ret_5d", "ADX", "ATR_Pct", "OBV_Slope",
-    "MACD_Hist", "BB_Pct", "Kurtosis_20", "Distance_SMA200"
-]   # exactly 9 features — matches training environment
+    "Log_Ret", "ADX", "ATR_Pct", "MACD_Hist", "VIX_Level", 
+    "VRP", "DTE_Norm", "SMA20_Slope", "Dist_SMA20"
+]
 
 
 # ── Brain inference (pure numpy — no evonet needed) ──────────────────────────
 def softmax(x: np.ndarray) -> np.ndarray:
     e = np.exp(x - x.max())
     return e / e.sum()
+
+    return softmax(l3)
 
 def forward_pass(neurons: list, x: np.ndarray) -> np.ndarray:
     """Run one EvoNet forward pass.
@@ -159,13 +162,25 @@ def forward_pass(neurons: list, x: np.ndarray) -> np.ndarray:
     return softmax(l3)
 
 def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
-    window = df.iloc[-WINDOW_SIZE:]
-    obs    = window[FEATURE_COLS].values.astype(np.float32)          # (20, 9)
+    # ─── CURATED FEATURE SELECTION (v2.5) ───
+    elite_cols = [
+        'Log_Ret', 'ADX', 'ATR_Pct', 'MACD_Hist', 'VIX_Level', 
+        'VRP', 'DTE_Norm', 'SMA20_Slope', 'Dist_SMA20', 'ATR_Slope'
+    ]
+    feature_cols = [c for c in elite_cols if c in df.columns]
+    
+    window_data = df.iloc[-WINDOW_SIZE:]
+    obs = window_data[feature_cols].values[:, :9].astype(np.float32)          # (20, 9)
     pos_ch = np.full((WINDOW_SIZE, 1), float(prev_position - 1), dtype=np.float32)
     state  = np.nan_to_num(np.hstack([obs, pos_ch]).flatten())       # (200,)
     probs  = forward_pass(brain['neurons'], state)
-    action = int(np.argmax(probs))
+    final_action = int(np.argmax(probs))
     
+    latest = df.iloc[-1]
+    vix = latest.get("VIX_Level", 0.15) * 100
+    is_bull_regime = latest.get("MACD_Hist", 0) > 0.1
+    is_bear_regime = latest.get("MACD_Hist", 0) < -0.1
+
     # 4. Strategy Router (Dynamic)
     is_fast_move = latest.get("ATR_Slope", 0) > 0.05 or abs(latest.get("Log_Ret", 0)) > 0.015
     

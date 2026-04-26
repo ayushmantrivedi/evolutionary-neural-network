@@ -1,0 +1,45 @@
+{
+  "version": "v1.7",
+  "created": "2026-04-26T11:48:15.988340",
+  "ticker": "^NSEI",
+  "metrics": {
+    "train": {
+      "gen": 50,
+      "fitness": -4.920839061548574,
+      "sharpe": -0.2784794545514781,
+      "sortino": -0.4418794741037664,
+      "max_dd": 0.024985534194146206,
+      "return": -0.3997762683677464,
+      "trades": 18,
+      "div_penalty": 0.0
+    },
+    "holdout_old": {
+      "sharpe": -3.7241790819913154,
+      "sortino": -5.9022260867796374,
+      "max_dd": 0.07243174264580202,
+      "return": -4.0132960141846645,
+      "trades": 1,
+      "div_penalty": 64.99999998000001,
+      "fitness": -108.24817512323627
+    },
+    "holdout_new": {
+      "sharpe": -3.261819755020526,
+      "sortino": -4.932162646818644,
+      "max_dd": 0.07243174264615364,
+      "return": -3.5284843490871243,
+      "trades": 1,
+      "div_penalty": 64.99999998000001,
+      "fitness": -104.36478498294414
+    },
+    "gatekeeper_passed": true
+  },
+  "config": {
+    "months": 6,
+    "generations": 50,
+    "mutation": 0.05,
+    "holdout_days": 20,
+    "force_promote": false,
+    "train_period": "2025-10-23 to 2026-03-23",
+    "holdout_period": "2026-02-23 to 2026-04-24"
+  }
+}
