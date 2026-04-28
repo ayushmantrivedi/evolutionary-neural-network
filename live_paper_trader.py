@@ -219,12 +219,27 @@ def get_ai_signal(brain, df, target_idx=None, prev_position=1):
             else:
                 strategy, regime = "BEAR CALL SPREAD", "Structural Short"
         
-        # 5. Position Sizing Engine
-        # size = base_capital * regime_score * (1 / vol)
-        # Normalized Vol: (VIX / 20)
+        # 5. Position Sizing Engine (Hardened v2.5)
         vol_scalar = 1.0 / (vix / 18.0) # Reduce size as VIX rises
         regime_score = 1.0 if (is_bull_regime or is_bear_regime) else 0.5
-        pos_size_pct = min(1.0, 0.5 * regime_score * vol_scalar) # Max 50% exposure per trade
+        pos_size_pct = 0.5 * regime_score * vol_scalar 
+        
+        # --- 1. Strategy-aware sizing (critical) ---
+        # Short vol spreads require high margin. Cap at 25% exposure.
+        if strategy in ["BULL PUT SPREAD", "BEAR CALL SPREAD"]:
+            pos_size_pct = min(pos_size_pct, 0.25)
+
+        # --- 2. VRP strength filter ---
+        # If VIX < 20, theta edge is weak for spreads
+        if "SPREAD" in strategy and vix < 20.0:
+            pos_size_pct *= 0.5
+
+        # --- 3. Conviction scoring ---
+        # Reduce size in chop or low-conviction regimes
+        if regime == "Neutral" or "CHOP" in features.get("trend", ""):
+            pos_size_pct *= 0.5
+
+        pos_size_pct = min(1.0, pos_size_pct)
         
         # 6. PREDICTIVE KILL-SWITCH (Risk Expansion)
         vix_prev = df.iloc[end_idx - 2].get("VIX_Level", 0.15) * 100
@@ -280,6 +295,11 @@ def cmd_signal(brain, log):
         action, conf, features = 1, 1.0, {"note": "Safety Override", "strategy": "CASH"}
     else:
         action, conf, features = get_ai_signal(brain, df, prev_position=log.data["current_position"])
+        
+        # --- 4. Drawdown Scaling (Global) ---
+        # If drawdown > 1%, halve the position size
+        if drawdown > 0.01:
+            conf *= 0.5
     if action is None: return
     log.add_signal(latest_date, action, latest_price, conf, features)
     trade = execute_paper_trade(log, action, latest_price, latest_date)

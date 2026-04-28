@@ -231,6 +231,7 @@ def get_expiry_T(weeks_out=1):
 
 # ── EvoAdaptive™ Position Sizing ──────────────────────────────────────────────
 def evo_position_size(capital, brain_confidence, regime_confidence, regime,
+                      is_short_vol=False, vix=15.0, current_pnl_pct=0.0, conviction="",
                       max_risk_pct=MAX_RISK_PCT):
     """
     EvoAdaptive™ novelty: position size scales with BOTH:
@@ -256,8 +257,28 @@ def evo_position_size(capital, brain_confidence, regime_confidence, regime,
     cost_per_lot = 200.0
 
     lots = max(1, int(risk_budget / cost_per_lot))
-    lots = min(lots, 10)   # hard cap at 10 lots
-    return lots
+    
+    # --- 1. Strategy-aware sizing (critical) ---
+    # 10 lots ≈ 50% margin exposure for credit spreads. Cap short_vol at 25% (5 lots).
+    max_lots = 5 if is_short_vol else 10
+    lots = min(lots, max_lots)
+
+    # --- 2. VRP strength filter ---
+    # Avoid large theta trades if VIX is not elevated (weak VRP edge)
+    if is_short_vol and vix < 20.0:
+        lots = max(1, int(lots * 0.5))
+
+    # --- 3. Drawdown scaling ---
+    # Protect capital if in a drawdown > 1%
+    if current_pnl_pct < -0.01:
+        lots = max(1, int(lots * 0.5))
+
+    # --- 4. Conviction scoring ---
+    # Reduce size on weak trend / low conviction signals
+    if "WEAK" in conviction or "NEGLIGIBLE" in conviction:
+        lots = max(1, int(lots * 0.5))
+
+    return max(1, lots)
 
 
 # ── Credit-Priority Strategy Matrix v2 ───────────────────────────────────────
@@ -793,7 +814,17 @@ def main():
     regime, regime_conf = classify_regime(ivr, vix, vix_mom, term_struct)
     sigma     = vix/100.; T=get_expiry_T(1)
     brain_conf= float(max(probs))
-    lots = evo_position_size(log["current_capital"], brain_conf, regime_conf, regime)
+    
+    # Compute score and strategy context for sizing
+    score = compute_evo_score(probs, df, ivr, regime, vix_mom)
+    strat_tmpl = STRATEGY_V2.get((ACTION_NAMES[action], regime), STRATEGY_V2[("NEUTRAL","NORMAL")])
+    is_short_vol = strat_tmpl.get("theta_sign", 0) > 0
+    pnl_pct = ((log["current_capital"] / log["initial_capital"]) - 1)
+    
+    lots = evo_position_size(log["current_capital"], brain_conf, regime_conf, regime,
+                             is_short_vol=is_short_vol, vix=vix, 
+                             current_pnl_pct=pnl_pct, conviction=score["conviction"])
+                             
     print(f"      ✅ AI:{ACTION_NAMES[action]}  Regime:{regime}(conf={regime_conf:.0%})")
     print(f"      ✅ VIX:{vix:.2f}  IVR:{ivr:.1%}  VixMom:{vix_mom:+.2f}  Term:{term_struct}")
     print(f"      ✅ BrainConf:{brain_conf:.0%}  Lots:{lots}")
@@ -801,7 +832,7 @@ def main():
     # 5. Strategy + Score
     print("[5/6] Strategy + EvoAdaptive score...")
     strategy = build_strategy(action, regime, spot, sigma, RISK_FREE_RATE, lots=lots)
-    score    = compute_evo_score(probs, df, ivr, regime, vix_mom)
+    # score already computed above
     print(f"      ✅ {strategy['name']}  Θ={strategy['net_theta']:+.2f}/d  Premium=₹{strategy['net_premium']:.0f}")
     print(f"      ✅ Score:{score['composite']:+.4f}  {score['conviction']}")
     for leg in strategy["legs"]:

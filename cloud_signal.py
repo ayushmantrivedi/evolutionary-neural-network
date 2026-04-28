@@ -191,10 +191,27 @@ def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
     elif final_action == 1:
         strategy, regime = ("IRON FLY / STRADDLE", "High Vol Range") if vix > 20 else ("CASH", "Low Vol Range")
         
-    # 5. Position Sizing Engine
+    # 5. Position Sizing Engine (Hardened v2.5)
     vol_scalar = 1.0 / (vix / 18.0)
     regime_score = 1.0 if (is_bull_regime or is_bear_regime) else 0.5
-    pos_size_pct = min(1.0, 0.5 * regime_score * vol_scalar)
+    pos_size_pct = 0.5 * regime_score * vol_scalar
+        
+    # --- 1. Strategy-aware sizing (critical) ---
+    # Short vol spreads require high margin. Cap at 25% exposure.
+    if strategy in ["BULL PUT SPREAD", "BEAR CALL SPREAD"]:
+        pos_size_pct = min(pos_size_pct, 0.25)
+
+    # --- 2. VRP strength filter ---
+    # If VIX < 20, theta edge is weak for spreads
+    if "SPREAD" in strategy and vix < 20.0:
+        pos_size_pct *= 0.5
+
+    # --- 3. Conviction scoring ---
+    # Reduce size in neutral/chop regimes
+    if not (is_bull_regime or is_bear_regime):
+        pos_size_pct *= 0.5
+
+    pos_size_pct = min(1.0, pos_size_pct)
         
     # Hard Kill-Switch
     vix_prev = df.iloc[-2].get("VIX_Level", 0.15) * 100
@@ -439,6 +456,11 @@ def main():
     else:
         action, features = get_signal(brain, df, prev_action)
         msg_prefix = ""
+        
+        # --- 4. Drawdown Scaling (Global) ---
+        # If drawdown > 1%, halve the position size
+        if drawdown > 0.01:
+            features["pos_size"] *= 0.5
 
     print(f"      Signal: {ACTION_NAMES[action]}  @  ₹{price:,.2f}")
 

@@ -30,9 +30,10 @@ import yfinance as yf
 # ── Import options engine (reuse all logic from cloud signal) ─────────────────
 from options_cloud_signal import (
     add_indicators, get_directional_signal, compute_ivr, classify_regime,
-    select_strategy, compute_rentech_score, get_nearest_expiry_T,
-    load_log, save_log, update_log, build_entry_message, build_exit_message,
-    FEATURE_COLS, ACTION_NAMES, ACTION_EMOJI, REGIME_EMOJI,
+    build_strategy, compute_evo_score, get_expiry_T, evo_position_size,
+    load_log, save_log, open_position, close_position, add_signal,
+    should_exit, _score_bar, STRATEGY_V2,
+    FEATURE_COLS, ACTION_NAMES, ACTION_EMOJI, REGIME_BADGE,
     TICKER, VIX_TICKER, BRAIN_FILE, TRADE_LOG_FILE,
     WINDOW_SIZE, LOOKBACK_DAYS, INITIAL_CAPITAL, RISK_FREE_RATE,
 )
@@ -71,14 +72,27 @@ def run_signal_pipeline(brain, df_nifty, df_vix, log):
     spot          = float(df_nifty["Close"].iloc[-1])
     vix           = float(df_vix["Close"].iloc[-1]) if len(df_vix) > 0 else 15.0
     ivr           = compute_ivr(df_vix["Close"])
-    regime        = classify_regime(ivr, vix)
+    
+    # Calculate vix_mom for regime classification
+    vix_mom = (vix - df_vix["Close"].rolling(5).mean().iloc[-1]) / df_vix["Close"].rolling(5).mean().iloc[-1]
+    term_struct = "CONTANGO"
+    regime, regime_conf = classify_regime(ivr, vix, vix_mom, term_struct)
+    
     sigma         = vix / 100.0
-    T             = get_nearest_expiry_T(1)
+    brain_conf    = float(max(probs))
+    
+    score = compute_evo_score(probs, df_nifty, ivr, regime, vix_mom)
+    strat_tmpl = STRATEGY_V2.get((ACTION_NAMES[action], regime), STRATEGY_V2[("NEUTRAL","NORMAL")])
+    is_short_vol = strat_tmpl.get("theta_sign", 0) > 0
+    pnl_pct = ((log["current_capital"] / log["initial_capital"]) - 1)
+    
+    lots = evo_position_size(log["current_capital"], brain_conf, regime_conf, regime,
+                             is_short_vol=is_short_vol, vix=vix, 
+                             current_pnl_pct=pnl_pct, conviction=score["conviction"])
 
-    strategy = select_strategy(action, regime, spot, sigma, T, RISK_FREE_RATE)
-    score    = compute_rentech_score(probs, df_nifty, ivr, regime)
+    strategy = build_strategy(action, regime, spot, sigma, RISK_FREE_RATE, lots=lots)
 
-    return action, probs, spot, vix, ivr, regime, strategy, score
+    return action, probs, spot, vix, ivr, regime, regime_conf, strategy, score
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -90,16 +104,18 @@ def cmd_signal(brain, log, mode="entry"):
     df_nifty, df_vix = fetch_data()
     today = df_nifty.index[-1].date().isoformat()
 
-    action, probs, spot, vix, ivr, regime, strategy, score = \
+    action, probs, spot, vix, ivr, regime, regime_conf, strategy, score = \
         run_signal_pipeline(brain, df_nifty, df_vix, log)
 
-    log = update_log(log, today, action, spot, strategy, score, regime, vix, ivr)
+    add_signal(log, today, action, spot, vix, ivr, regime, strategy, score)
+    if not log.get("open_position") and strategy["legs"]:
+        open_position(log, today, action, spot, strategy, score, regime, regime_conf)
     save_log(log)
 
     # ── Display ──────────────────────────────────────────────────────────────
     print(f"\n  Date:        {today}")
     print(f"  NIFTY50:     ₹{spot:,.2f}")
-    print(f"  India VIX:   {vix:.2f}  ({REGIME_EMOJI[regime]})")
+    print(f"  India VIX:   {vix:.2f}  ({REGIME_BADGE.get(regime, regime)})")
     print(f"  IV Rank:     {ivr*100:.0f}th percentile")
     print(f"\n  AI Signal:   {ACTION_EMOJI[action]}")
     print(f"  Probs:       SHORT={probs[0]:.2%}  NEUTRAL={probs[1]:.2%}  "
@@ -129,7 +145,7 @@ def cmd_signal(brain, log, mode="entry"):
           f"({'credit' if strategy['net_premium'] < 0 else 'debit'})")
 
     print(f"\n  RenTech Score:  {score['composite']:+.3f}  {score['conviction']}")
-    print(f"  {score['score_bar']}")
+    print(f"  {_score_bar(score['composite'])}")
 
     pnl = ((log["current_capital"] / log["initial_capital"]) - 1) * 100
     print(f"\n  Portfolio:  ₹{log['current_capital']:,.2f}  ({pnl:+.2f}%)")
@@ -148,13 +164,13 @@ def cmd_exit_check(brain, log):
 
     df_nifty, df_vix = fetch_data()
     today = df_nifty.index[-1].date().isoformat()
-    action, probs, spot, vix, ivr, regime, strategy, score = \
+    action, probs, spot, vix, ivr, regime, regime_conf, strategy, score = \
         run_signal_pipeline(brain, df_nifty, df_vix, log)
 
     op = log.get("open_position")
     if not op:
         print(f"\n  ℹ️  No open position to evaluate.")
-        print(f"  NIFTY: ₹{spot:,.2f}  |  Regime: {REGIME_EMOJI[regime]}")
+        print(f"  NIFTY: ₹{spot:,.2f}  |  Regime: {REGIME_BADGE.get(regime, regime)}")
         print("="*70)
         return
 
@@ -163,20 +179,22 @@ def cmd_exit_check(brain, log):
     theta_gain = abs(op.get("net_theta", 0))
     pnl_est    = op.get("net_delta", 0) * (spot - spot_entry) + theta_gain
 
-    exit_now = abs(score["composite"]) < 0.1 or abs(move_pct) > 3.0
-    reason = ("Score reversed to neutral" if abs(score["composite"]) < 0.1 else
-              "3% stop-loss triggered" if abs(move_pct) > 3.0 else
-              "Trend intact — hold")
+    exit_now, reason = should_exit(op, score["composite"], regime, 
+                                   (datetime.date.fromisoformat(today) - datetime.date.fromisoformat(op["date_entered"])).days,
+                                   spot, vix)
 
     print(f"\n  Date:        {today}")
     print(f"  NIFTY50:     ₹{spot:,.2f}  ({move_pct:+.1f}% from entry)")
-    print(f"  Regime:      {REGIME_EMOJI[regime]}")
+    print(f"  Regime:      {REGIME_BADGE.get(regime, regime)}")
     print(f"\n  Open Trade:  {op['strategy']}")
     print(f"  Entered:     {op['date_entered']}  @  ₹{spot_entry:,.2f}")
     print(f"  Est. P&L:    ₹{pnl_est:+,.0f}")
     print(f"\n  Score:       {score['composite']:+.3f}  {score['conviction']}")
     print(f"\n  ► {'⛔ CLOSE POSITION' if exit_now else '✅ HOLD POSITION'}")
     print(f"    Reason: {reason}")
+    if exit_now:
+        close_position(log, today, spot, reason, pnl_est)
+        save_log(log)
     print("="*70)
 
 
@@ -284,18 +302,22 @@ def cmd_backfill(brain, days: int):
             log["daily_signals"][-1]["action"] if log["daily_signals"]
             else "NEUTRAL", 1)
 
-        action, probs = get_directional_signal(brain, df_slice, prev_action)
-        spot          = float(df_slice["Close"].iloc[-1])
-        ivr           = compute_ivr(vix_slice["Close"])
-        regime        = classify_regime(ivr, vix)
-        sigma         = vix / 100.0
-        T             = get_nearest_expiry_T(1)
+        action, probs, spot, vix, ivr, regime, regime_conf, strategy, score = \
+            run_signal_pipeline(brain, df_slice, vix_slice, log)
 
-        strategy = select_strategy(action, regime, spot, sigma, T, RISK_FREE_RATE)
-        score    = compute_rentech_score(probs, df_slice, ivr, regime)
-
-        log = update_log(log, date_str, action, spot, strategy, score,
-                         regime, vix, ivr)
+        add_signal(log, date_str, action, spot, vix, ivr, regime, strategy, score)
+        
+        # Simple backfill exit logic
+        if log.get("open_position"):
+            op = log["open_position"]
+            days_held = (date.date() - datetime.date.fromisoformat(op["date_entered"])).days
+            exit_now, reason = should_exit(op, score["composite"], regime, days_held, spot, vix)
+            if exit_now:
+                pnl_est = op["net_delta"] * (spot - op["spot_at_entry"]) + abs(op["net_theta"]) * days_held
+                close_position(log, date_str, spot, reason, pnl_est)
+        
+        if not log.get("open_position") and strategy["legs"]:
+            open_position(log, date_str, action, spot, strategy, score, regime, regime_conf)
 
         print(f"  {date_str:>12}  {spot:>10,.2f}  {vix:>6.2f}  "
               f"{regime:>8}  {ACTION_NAMES[action]:>8}  "

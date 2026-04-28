@@ -22,10 +22,11 @@ sys.path.insert(0, ROOT_DIR)
 import yfinance as yf
 from options_cloud_signal import (
     add_indicators, get_directional_signal, compute_ivr, classify_regime,
-    select_strategy, compute_rentech_score, get_nearest_expiry_T,
+    build_strategy, compute_evo_score, get_expiry_T, evo_position_size,
     ACTION_NAMES, FEATURE_COLS,
     TICKER, VIX_TICKER, BRAIN_FILE,
     WINDOW_SIZE, LOOKBACK_DAYS, INITIAL_CAPITAL, RISK_FREE_RATE, LOT_SIZE, FEE_PCT,
+    MAX_RISK_PCT,
 )
 
 import argparse
@@ -86,11 +87,18 @@ for i, date in enumerate(trade_dates):
     ivr       = compute_ivr(vix_slice["Close"])
     regime    = classify_regime(ivr, vix)
     sigma     = vix / 100.0
-    T         = get_nearest_expiry_T(1)
-
     action, probs = get_directional_signal(brain, df_slice, position)
-    strategy      = select_strategy(action, regime, spot, sigma, T, RISK_FREE_RATE)
-    score         = compute_rentech_score(probs, df_slice, ivr, regime)
+    
+    # Context for sizing
+    score = compute_evo_score(probs, df_slice, ivr, regime, vix_mom=0.0) # vix_mom approximation
+    is_short_vol = (action != 1) and (regime in ["NORMAL", "HIGH", "EXTREME"])
+    pnl_pct = (capital / INITIAL_CAPITAL) - 1
+    
+    lots = evo_position_size(capital, float(max(probs)), 0.8, regime, 
+                             is_short_vol=is_short_vol, vix=vix, 
+                             current_pnl_pct=pnl_pct, conviction=score["conviction"])
+
+    strategy = build_strategy(action, regime, spot, sigma, RISK_FREE_RATE, lots=lots)
 
     # ── Options P&L simulation ─────────────────────────────────────────────
     day_pnl = 0.0
