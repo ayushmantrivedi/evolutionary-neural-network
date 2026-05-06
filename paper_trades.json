@@ -1,7 +1,7 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 990022.2408588579,
-  "current_position": 1,
+  "current_capital": 989527.2297384285,
+  "current_position": 2,
   "trades": [
     {
       "date": "2026-04-20",
@@ -32,6 +32,13 @@
       "to": "NEUTRAL",
       "price": 24032.80078125,
       "capital": 990022.2408588579
+    },
+    {
+      "date": "2026-05-06",
+      "from": "NEUTRAL",
+      "to": "LONG",
+      "price": 24330.94921875,
+      "capital": 989527.2297384285
     }
   ],
   "daily_signals": [
@@ -173,6 +180,13 @@
       "action_name": "NEUTRAL",
       "price": 24032.80078125,
       "timestamp": "2026-05-05T11:24:18.361866"
+    },
+    {
+      "date": "2026-05-06",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24330.94921875,
+      "timestamp": "2026-05-06T11:59:34.705343"
     }
   ],
   "equity_curve": [
@@ -217,6 +231,12 @@
       "equity": 990022.2408588579,
       "position": "NEUTRAL",
       "price": 24032.80078125
+    },
+    {
+      "date": "2026-05-06",
+      "equity": 989527.2297384285,
+      "position": "LONG",
+      "price": 24330.94921875
     }
   ]
 }
