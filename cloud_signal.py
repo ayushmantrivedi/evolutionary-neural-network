@@ -161,7 +161,10 @@ def forward_pass(neurons: list, x: np.ndarray) -> np.ndarray:
                    for n in neurons[2]], dtype=np.float32)
     return softmax(l3)
 
-def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
+def sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + np.exp(-x))
+
+def get_signal(brain: dict, df: pd.DataFrame, prev_position: int, current_capital: float, initial_capital: float, recent_trades: list) -> int:
     # ─── CURATED FEATURE SELECTION (v2.5) ───
     elite_cols = [
         'Log_Ret', 'ADX', 'ATR_Pct', 'MACD_Hist', 'VIX_Level', 
@@ -174,53 +177,125 @@ def get_signal(brain: dict, df: pd.DataFrame, prev_position: int) -> int:
     pos_ch = np.full((WINDOW_SIZE, 1), float(prev_position - 1), dtype=np.float32)
     state  = np.nan_to_num(np.hstack([obs, pos_ch]).flatten())       # (200,)
     probs  = forward_pass(brain['neurons'], state)
-    final_action = int(np.argmax(probs))
+    raw_action = int(np.argmax(probs))
     
     latest = df.iloc[-1]
-    vix = latest.get("VIX_Level", 0.15) * 100
-    is_bull_regime = latest.get("MACD_Hist", 0) > 0.1
-    is_bear_regime = latest.get("MACD_Hist", 0) < -0.1
-
-    # 4. Strategy Router (Dynamic)
-    is_fast_move = latest.get("ATR_Slope", 0) > 0.05 or abs(latest.get("Log_Ret", 0)) > 0.015
     
-    if final_action == 2: # LONG
-        strategy, regime = ("LONG CALL / FUTURES", "Momentum Long") if is_fast_move else ("BULL PUT SPREAD", "Structural Long")
-    elif final_action == 0: # SHORT
-        strategy, regime = ("LONG PUT / FUTURES", "Momentum Short") if is_fast_move else ("BEAR CALL SPREAD", "Structural Short")
-    elif final_action == 1:
-        strategy, regime = ("IRON FLY / STRADDLE", "High Vol Range") if vix > 20 else ("CASH", "Low Vol Range")
+    # 1) Policy Layer: Inputs
+    P = latest['Close']
+    SMA5 = df['Close'].rolling(5).mean().iloc[-1]
+    SMA20 = latest.get('SMA20', df['Close'].rolling(20).mean().iloc[-1])
+    
+    VIX = latest.get("VIX_Level", 0.15) * 100
+    VIX_prev = df['VIX_Level'].iloc[-2] * 100 if len(df) > 1 else VIX
+    delta_VIX = (VIX - VIX_prev) / VIX_prev if VIX_prev > 0 else 0.0
+    
+    HH_HL = (latest['High'] > df['High'].iloc[-2]) and (latest['Low'] > df['Low'].iloc[-2])
+    LL_LH = (latest['Low'] < df['Low'].iloc[-2]) and (latest['High'] < df['High'].iloc[-2])
+    break_5D_low = P < df['Low'].iloc[-6:-1].min()
+    break_5D_high = P > df['High'].iloc[-6:-1].max()
+    
+    VRP = latest.get('VRP', 0)
+    VRP_series = df['VRP'] if 'VRP' in df.columns else pd.Series([0]*len(df))
+    VRP_z = (VRP - VRP_series.rolling(60).mean().iloc[-1]) / (VRP_series.rolling(60).std().iloc[-1] + 1e-9)
+    if np.isnan(VRP_z): VRP_z = 0.0
+    
+    DD = (initial_capital - current_capital) / initial_capital if initial_capital > 0 else 0.0
+    DD = max(0.0, DD) # Drawdown is positive
+    RV_5 = df['Log_Ret'].rolling(5).std().iloc[-1] * np.sqrt(252) if 'Log_Ret' in df.columns else 0.15
+    ATR_5_slope = latest.get('ATR_Slope', 0)
+    
+    # 2) Hard Guards
+    if DD >= 0.10:
+        return 1, {"strategy": "EMERGENCY_CASH", "regime": "Risk Off", "vix": VIX, "pos_size": 0.0, "edge_score": 0.0, "vrp_z": VRP_z, "delta_vix": delta_VIX, "trend": 0.0, "reason": "Drawdown limit reached"}
         
-    # 5. Position Sizing Engine (Hardened v2.5)
-    vol_scalar = 1.0 / (vix / 18.0)
-    regime_score = 1.0 if (is_bull_regime or is_bear_regime) else 0.5
-    pos_size_pct = 0.5 * regime_score * vol_scalar
+    if delta_VIX >= 0.08 and P < SMA5:
+        if raw_action == 0:
+            raw_action = 1 # Risk Off: block new shorts
+
+    # 3) Regime Classifier
+    UP_TREND = (P > SMA20) and (SMA5 > SMA20) and HH_HL and not break_5D_low
+    DOWN_TREND = (P < SMA20) and (SMA5 < SMA20) and LL_LH and not break_5D_high
+    VOL_EXPANSION = (delta_VIX > 0.04) or (ATR_5_slope > 0.05)
+    VOL_CONTRACTION = (delta_VIX < -0.04)
+    
+    if VOL_EXPANSION and not UP_TREND and not DOWN_TREND:
+        regime = "S4: Risk-Off"
+    elif UP_TREND:
+        regime = "S1: Long Trend"
+    elif DOWN_TREND:
+        regime = "S2: Short Trend"
+    else:
+        regime = "S3: Neutral/Theta"
+
+    # 4) Edge Scoring
+    trend_strength = (P - SMA20) / SMA20
+    edge_dir = sigmoid(abs(trend_strength) * 100)
+    edge_vrp = sigmoid(VRP_z)
+    edge_vol = 1.0 - sigmoid(delta_VIX * 100)
+    
+    edge_total = 0.4 * edge_dir + 0.4 * edge_vrp + 0.2 * edge_vol
+    
+    expected_edge = edge_total * 0.02
+    cost_per_trade = 0.005
+    if expected_edge < cost_per_trade * 1.5:
+        edge_gate_passed = False
+    else:
+        edge_gate_passed = True
         
-    # --- 1. Strategy-aware sizing (critical) ---
-    # Short vol spreads require high margin. Cap at 25% exposure.
-    if strategy in ["BULL PUT SPREAD", "BEAR CALL SPREAD"]:
-        pos_size_pct = min(pos_size_pct, 0.25)
-
-    # --- 2. VRP strength filter ---
-    # If VIX < 20, theta edge is weak for spreads
-    if "SPREAD" in strategy and vix < 20.0:
-        pos_size_pct *= 0.5
-
-    # --- 3. Conviction scoring ---
-    # Reduce size in neutral/chop regimes
-    if not (is_bull_regime or is_bear_regime):
-        pos_size_pct *= 0.5
-
-    pos_size_pct = min(1.0, pos_size_pct)
+    action = raw_action
+    if regime == "S4: Risk-Off" and action != 1:
+        action = 1 # Force neutral
         
-    # Hard Kill-Switch
-    vix_prev = df.iloc[-2].get("VIX_Level", 0.15) * 100
-    vix_spike = (vix - vix_prev) / vix_prev if vix_prev > 0 else 0
-    if vix > 30 or (vix_spike > 0.12 and latest.get("ATR_Slope", 0) > 0.05):
-        final_action = 1
-        strategy, regime = "CASH (SAFETY)", "Extreme Stress Expansion"
-
-    return final_action, {"strategy": strategy, "regime": regime, "vix": vix, "pos_size": pos_size_pct}
+    # 5) Strategy Router
+    strategy = "CASH"
+    if action == 2:
+        if VOL_CONTRACTION and UP_TREND: strategy = "LONG CALL/SPREAD"
+        elif VRP_z > 0.5 and not VOL_EXPANSION: strategy = "BULL PUT SPREAD"
+        else: strategy = "SMALL CALL SPREAD"
+    elif action == 0:
+        if VOL_EXPANSION and DOWN_TREND: strategy = "LONG PUT/SPREAD"
+        elif VRP_z > 0.5 and not VOL_EXPANSION: strategy = "BEAR CALL SPREAD"
+        else: strategy = "SMALL PUT SPREAD"
+    elif action == 1:
+        if regime == "S3: Neutral/Theta" and VRP_z > 0.8 and not VOL_EXPANSION: strategy = "IRON CONDOR (SMALL)"
+        else: strategy = "CASH"
+        
+    same_strategy_count = 0
+    if recent_trades:
+        for t in reversed(recent_trades):
+            if t.get('strategy') == strategy: same_strategy_count += 1
+            else: break
+            
+    # 6) Position Sizing
+    base = edge_total
+    vol_adj = 1.0 / (1.0 + RV_5)
+    dd_adj = 1.0 - np.clip(abs(DD) / 0.10, 0.0, 0.5)
+    
+    size_raw = base * vol_adj * dd_adj
+    
+    if strategy in ["BULL PUT SPREAD", "BEAR CALL SPREAD", "IRON CONDOR (SMALL)"]: size_cap = 0.25
+    elif "SPREAD" in strategy: size_cap = 0.35
+    elif "LONG CALL" in strategy or "LONG PUT" in strategy: size_cap = 0.40
+    else: size_cap = 0.20
+    
+    if strategy == "CASH": size_cap = 0.0
+    size = min(size_raw, size_cap)
+    
+    if delta_VIX > 0: size *= 0.7
+    if DD > 0.01: size *= 0.7
+    if same_strategy_count >= 2: size *= 0.8
+    
+    if size < 0.05 and action != 1:
+        action = 1
+        strategy = "CASH"
+        size = 0.0
+        
+    features = {
+        "strategy": strategy, "regime": regime, "vix": VIX, "pos_size": size,
+        "edge_score": edge_total, "vrp_z": VRP_z, "delta_vix": delta_VIX, "trend": trend_strength
+    }
+    return action, features
 
 
 # ── Trade log ─────────────────────────────────────────────────────────────────
@@ -372,11 +447,16 @@ def build_message(log, action, price, today, drawdown, features, df=None):
         f"📊 Days: {len(log['daily_signals'])}  ·  Trades: {len(log['trades'])}  ·  Streak: {streak}d",
     ]
 
-    # Weekend Insight (Friday)
+    # Weekly/Daily Diagnostics
     strat = features.get("strategy", "CASH")
     regime = features.get("regime", "Normal")
     vix = features.get("vix", 0)
     pos_size = features.get("pos_size", 0.5)
+    
+    edge_score = features.get("edge_score", 0.0)
+    vrp_z = features.get("vrp_z", 0.0)
+    delta_vix = features.get("delta_vix", 0.0)
+    trend = features.get("trend", 0.0)
     
     msg_lines.append("")
     msg_lines.append(f"🛠️ <b>Strategy:</b> {strat}")
@@ -384,8 +464,13 @@ def build_message(log, action, price, today, drawdown, features, df=None):
     msg_lines.append(f"📏 <b>Size:</b> {pos_size*100:.1f}% Exposure")
     
     # 🏛️ Alpha Metrics
-    vix_data = f" (VIX: {vix:.1f})"
-    msg_lines.append(f"🏛️ <b>Context:</b> {regime}{vix_data}")
+    msg_lines.append("")
+    msg_lines.append(f"🔬 <b>Diagnostics</b>")
+    msg_lines.append(f"  EdgeScore:     {edge_score:.2f}")
+    msg_lines.append(f"  VRP_z:         {vrp_z:+.1f}")
+    msg_lines.append(f"  ΔVIX (1d):     {delta_vix*100:+.1f}%")
+    msg_lines.append(f"  TrendStrength: {trend*100:+.2f}%")
+    msg_lines.append(f"  Context:       {regime} (VIX: {vix:.1f})")
 
     if df is not None:
         try:
@@ -451,16 +536,12 @@ def main():
     if drawdown > 0.10:
         print(f"      [SAFETY] Drawdown {drawdown:.1%} exceeds limit. Neutralizing.")
         action = 1 # Force Neutral
-        features = {"strategy": "EMERGENCY_CASH", "regime": "Risk Off", "vix": 0}
+        features = {"strategy": "EMERGENCY_CASH", "regime": "Risk Off", "vix": 0, "pos_size": 0.0, "edge_score": 0.0, "vrp_z": 0.0, "delta_vix": 0.0, "trend": 0.0}
         msg_prefix = "⚠️ <b>SAFETY OVERRIDE ACTIVE</b>\n"
     else:
-        action, features = get_signal(brain, df, prev_action)
+        recent_trades = log.get("trades", [])[-3:]
+        action, features = get_signal(brain, df, prev_action, cap, initial_cap, recent_trades)
         msg_prefix = ""
-        
-        # --- 4. Drawdown Scaling (Global) ---
-        # If drawdown > 1%, halve the position size
-        if drawdown > 0.01:
-            features["pos_size"] *= 0.5
 
     print(f"      Signal: {ACTION_NAMES[action]}  @  ₹{price:,.2f}")
 
