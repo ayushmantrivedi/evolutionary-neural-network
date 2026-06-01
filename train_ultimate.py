@@ -15,7 +15,7 @@ from evonet.core.network import MultiClassEvoNet
 from evonet.core.memory import DirectionalMemory
 
 # Configuration for The Ultimate Run
-TICKER = "BTC-USD"
+TICKER = "^NSEI"
 START_DATE = "2018-01-01"
 END_DATE = "2024-01-01"
 WINDOW_SIZE = 20

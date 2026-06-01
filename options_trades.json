@@ -1,6 +1,6 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 1000000,
+  "current_capital": 1002892.5565234375,
   "open_position": {
     "date_entered": "2026-03-06",
     "strategy": "Short Call Spread (Bear Call)",
@@ -42,7 +42,9 @@
           "charm": -3.5305
         }
       }
-    ]
+    ],
+    "days_held": 1,
+    "cumulative_pnl": 2892.5565234375
   },
   "trades": [],
   "daily_signals": [
@@ -59,6 +61,19 @@
       "composite_score": -0.869,
       "conviction": "\ud83d\udd25 STRONG",
       "timestamp": "2026-03-06T10:35:46.054711"
+    },
+    {
+      "date": "2026-06-02",
+      "action": "LONG",
+      "price": 23547.75,
+      "vix": 16.19,
+      "ivr": 0.376,
+      "regime": "NORMAL",
+      "strategy": "Bull Put Spread (Credit)",
+      "net_theta": 82.0,
+      "score": 0.9149,
+      "conviction": "\ud83d\udd25 STRONG",
+      "timestamp": "2026-06-01T21:06:59.862805"
     }
   ],
   "equity_curve": [
@@ -73,6 +88,11 @@
       "equity": 1000000,
       "price": 24450.44921875,
       "regime": "HIGH"
+    },
+    {
+      "date": "2026-06-02",
+      "equity": 1002892.5565234375,
+      "regime": "NORMAL"
     }
   ],
   "stats": {

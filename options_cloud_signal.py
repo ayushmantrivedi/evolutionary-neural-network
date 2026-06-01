@@ -234,49 +234,47 @@ def evo_position_size(capital, brain_confidence, regime_confidence, regime,
                       is_short_vol=False, vix=15.0, current_pnl_pct=0.0, conviction="",
                       max_risk_pct=MAX_RISK_PCT):
     """
-    EvoAdaptive™ novelty: position size scales with BOTH:
+    EvoAdaptive™ + 0.25 Fractional Kelly Sizing
+    Position size scales with BOTH:
     1. EvoNet brain confidence (P_winning - P_losing)
     2. Regime detection confidence
-    This gives larger positions when both signals agree strongly,
-    and tiny/zero positions when either signal is weak.
-
-    Returns: number of lots (integer, min 1)
     """
-    # Regime risk scalar — how much capital to risk per regime
+    # Regime risk scalar
     regime_scalar = {"LOW": 0.8, "NORMAL": 1.0, "HIGH": 0.7, "EXTREME": 0.4}
     rs  = regime_scalar.get(regime, 0.8)
 
     # Combined confidence: geometric mean ensures BOTH must be high
     combined = math.sqrt(brain_confidence * regime_confidence)
 
-    # Capital risk amount
+    # Capital risk amount (scaled by fractional Kelly multiplier approx)
     risk_budget = capital * max_risk_pct * rs * combined
 
     # Approximate cost of 1 lot ATM option (~2% of NIFTY * LOT_SIZE)
-    # Using a conservative Rs 200 per lot as base cost
     cost_per_lot = 200.0
 
     lots = max(1, int(risk_budget / cost_per_lot))
     
-    # --- 1. Strategy-aware sizing (critical) ---
-    # 10 lots ≈ 50% margin exposure for credit spreads. Cap short_vol at 25% (5 lots).
+    # --- 1. Strategy-aware sizing ---
     max_lots = 5 if is_short_vol else 10
     lots = min(lots, max_lots)
 
     # --- 2. VRP strength filter ---
-    # Avoid large theta trades if VIX is not elevated (weak VRP edge)
     if is_short_vol and vix < 20.0:
         lots = max(1, int(lots * 0.5))
 
-    # --- 3. Drawdown scaling ---
-    # Protect capital if in a drawdown > 1%
-    if current_pnl_pct < -0.01:
+    # --- 3. Drawdown scaling (CRITICAL FIX) ---
+    if current_pnl_pct < -0.04:  # -4% DD = Halt Trading
+        return 0
+    elif current_pnl_pct < -0.02: # -2% DD = Halve Exposure
         lots = max(1, int(lots * 0.5))
 
     # --- 4. Conviction scoring ---
-    # Reduce size on weak trend / low conviction signals
     if "WEAK" in conviction or "NEGLIGIBLE" in conviction:
         lots = max(1, int(lots * 0.5))
+        
+    # --- 5. Probability Threshold (Low Confidence = Cash) ---
+    if brain_confidence < 0.50:
+        return 0
 
     return max(1, lots)
 
@@ -555,6 +553,10 @@ def compute_evo_score(probs, df, ivr, regime, vix_mom):
 
     composite = sum(weights[k] * signals[k] for k in signals)
     composite = float(np.tanh(composite * 2.5))
+    
+    # FORCE NEUTRAL IF AI IS HIGHLY UNCERTAIN
+    if brain_conf < 0.50:
+        composite = 0.0  # Force to neutral
 
     conviction = ("🔥 STRONG" if abs(composite)>=0.65 else
                   "✅ MODERATE" if abs(composite)>=0.40 else
@@ -849,7 +851,7 @@ def main():
         op["days_held"] = op.get("days_held",0)+1
         delta_pnl = op["net_delta"]*(spot-op["spot_at_entry"])
         theta_pnl = op["net_theta"]
-        gamma_pnl = 0.5*op["net_gamma"]*(spot-op["spot_at_entry"])**2
+        gamma_pnl = 0.5*op.get("net_gamma", 0.0)*(spot-op["spot_at_entry"])**2
         daily_pnl = delta_pnl + theta_pnl + gamma_pnl
         op["cumulative_pnl"] = op.get("cumulative_pnl",0.)+daily_pnl
         log["current_capital"] = max(log["current_capital"]+daily_pnl, 1.)
