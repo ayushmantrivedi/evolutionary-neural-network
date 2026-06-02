@@ -1,6 +1,6 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 1005913.6590234375,
+  "current_capital": 1009009.7270703125,
   "open_position": {
     "date_entered": "2026-03-06",
     "strategy": "Short Call Spread (Bear Call)",
@@ -43,8 +43,8 @@
         }
       }
     ],
-    "days_held": 2,
-    "cumulative_pnl": 5913.6590234375
+    "days_held": 3,
+    "cumulative_pnl": 9009.7270703125
   },
   "trades": [],
   "daily_signals": [
@@ -97,6 +97,11 @@
     {
       "date": "2026-06-02",
       "equity": 1005913.6590234375,
+      "regime": "NORMAL"
+    },
+    {
+      "date": "2026-06-02",
+      "equity": 1009009.7270703125,
       "regime": "NORMAL"
     }
   ],
