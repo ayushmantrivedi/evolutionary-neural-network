@@ -1,6 +1,6 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 956317.3803722836,
+  "current_capital": 959491.7751296543,
   "current_position": 0,
   "trades": [
     {
@@ -369,6 +369,13 @@
       "action_name": "SHORT",
       "price": 23483.55078125,
       "timestamp": "2026-06-02T14:18:22.502822"
+    },
+    {
+      "date": "2026-06-03",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23405.599609375,
+      "timestamp": "2026-06-03T14:54:49.804520"
     }
   ],
   "equity_curve": [
@@ -533,6 +540,12 @@
       "equity": 956317.3803722836,
       "position": "SHORT",
       "price": 23483.55078125
+    },
+    {
+      "date": "2026-06-03",
+      "equity": 959491.7751296543,
+      "position": "SHORT",
+      "price": 23405.599609375
     }
   ]
 }
