@@ -488,6 +488,13 @@
       "action_name": "NEUTRAL",
       "price": 23824.099609375,
       "timestamp": "2026-06-23T12:43:36.983037"
+    },
+    {
+      "date": "2026-06-24",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24021.650390625,
+      "timestamp": "2026-06-24T12:25:47.442130"
     }
   ],
   "equity_curve": [
@@ -742,6 +749,12 @@
       "equity": 990376.670879927,
       "position": "NEUTRAL",
       "price": 23824.099609375
+    },
+    {
+      "date": "2026-06-24",
+      "equity": 990376.670879927,
+      "position": "NEUTRAL",
+      "price": 24021.650390625
     }
   ]
 }
