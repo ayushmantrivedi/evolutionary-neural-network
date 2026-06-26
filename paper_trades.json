@@ -509,6 +509,13 @@
       "action_name": "LONG",
       "price": 24056.0,
       "timestamp": "2026-06-25T12:30:31.026104"
+    },
+    {
+      "date": "2026-06-26",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24056.0,
+      "timestamp": "2026-06-26T12:22:25.063419"
     }
   ],
   "equity_curve": [
@@ -772,6 +779,12 @@
     },
     {
       "date": "2026-06-25",
+      "equity": 989881.4825444871,
+      "position": "LONG",
+      "price": 24056.0
+    },
+    {
+      "date": "2026-06-26",
       "equity": 989881.4825444871,
       "position": "LONG",
       "price": 24056.0
