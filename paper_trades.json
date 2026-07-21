@@ -1,6 +1,6 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 938362.2138550802,
+  "current_capital": 936395.5272383622,
   "current_position": 2,
   "trades": [
     {
@@ -677,6 +677,13 @@
       "action_name": "LONG",
       "price": 24238.5,
       "timestamp": "2026-07-20T12:23:53.197049"
+    },
+    {
+      "date": "2026-07-21",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24187.69921875,
+      "timestamp": "2026-07-21T11:55:54.710406"
     }
   ],
   "equity_curve": [
@@ -1039,6 +1046,12 @@
       "equity": 938362.2138550802,
       "position": "LONG",
       "price": 24238.5
+    },
+    {
+      "date": "2026-07-21",
+      "equity": 936395.5272383622,
+      "position": "LONG",
+      "price": 24187.69921875
     }
   ]
 }
