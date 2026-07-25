@@ -1,7 +1,7 @@
 {
   "initial_capital": 1000000,
-  "current_capital": 956795.7782614143,
-  "current_position": 1,
+  "current_capital": 924079.7496154587,
+  "current_position": 2,
   "trades": [
     {
       "date": "2026-04-20",
@@ -81,6 +81,104 @@
       "to": "NEUTRAL",
       "price": 23547.75,
       "capital": 956795.7782614143
+    },
+    {
+      "date": "2026-06-02",
+      "from": "NEUTRAL",
+      "to": "SHORT",
+      "price": 23483.55078125,
+      "capital": 956317.3803722836
+    },
+    {
+      "date": "2026-06-05",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 23366.69921875,
+      "capital": 960605.029212574
+    },
+    {
+      "date": "2026-06-22",
+      "from": "LONG",
+      "to": "NEUTRAL",
+      "price": 24102.900390625,
+      "capital": 990376.670879927
+    },
+    {
+      "date": "2026-06-25",
+      "from": "NEUTRAL",
+      "to": "LONG",
+      "price": 24056.0,
+      "capital": 989881.4825444871
+    },
+    {
+      "date": "2026-06-29",
+      "from": "LONG",
+      "to": "NEUTRAL",
+      "price": 23946.25,
+      "capital": 984870.4338588659
+    },
+    {
+      "date": "2026-07-03",
+      "from": "NEUTRAL",
+      "to": "SHORT",
+      "price": 24270.849609375,
+      "capital": 984377.9986419365
+    },
+    {
+      "date": "2026-07-06",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 24430.349609375,
+      "capital": 977416.8028583312
+    },
+    {
+      "date": "2026-07-08",
+      "from": "LONG",
+      "to": "NEUTRAL",
+      "price": 23882.05078125,
+      "capital": 954992.222545374
+    },
+    {
+      "date": "2026-07-10",
+      "from": "NEUTRAL",
+      "to": "LONG",
+      "price": 24206.900390625,
+      "capital": 954514.7264341014
+    },
+    {
+      "date": "2026-07-13",
+      "from": "LONG",
+      "to": "NEUTRAL",
+      "price": 24211.0,
+      "capital": 954199.1228744658
+    },
+    {
+      "date": "2026-07-14",
+      "from": "NEUTRAL",
+      "to": "SHORT",
+      "price": 24052.05078125,
+      "capital": 953722.0233130286
+    },
+    {
+      "date": "2026-07-17",
+      "from": "SHORT",
+      "to": "LONG",
+      "price": 24334.30078125,
+      "capital": 942071.017336434
+    },
+    {
+      "date": "2026-07-22",
+      "from": "LONG",
+      "to": "NEUTRAL",
+      "price": 23996.25,
+      "capital": 928515.620303504
+    },
+    {
+      "date": "2026-07-23",
+      "from": "NEUTRAL",
+      "to": "LONG",
+      "price": 23869.599609375,
+      "capital": 928051.3624933524
     }
   ],
   "daily_signals": [
@@ -355,6 +453,272 @@
       "action_name": "NEUTRAL",
       "price": 23382.599609375,
       "timestamp": "2026-06-01T16:14:19.090158"
+    },
+    {
+      "date": "2026-06-02",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23483.55078125,
+      "timestamp": "2026-06-02T14:18:22.502822"
+    },
+    {
+      "date": "2026-06-03",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23405.599609375,
+      "timestamp": "2026-06-03T14:54:49.804520"
+    },
+    {
+      "date": "2026-06-04",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 23416.55078125,
+      "timestamp": "2026-06-04T12:50:56.468399"
+    },
+    {
+      "date": "2026-06-05",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23366.69921875,
+      "timestamp": "2026-06-05T12:46:20.555650"
+    },
+    {
+      "date": "2026-06-08",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23123.0,
+      "timestamp": "2026-06-08T14:19:10.959339"
+    },
+    {
+      "date": "2026-06-09",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23242.099609375,
+      "timestamp": "2026-06-09T12:47:16.270873"
+    },
+    {
+      "date": "2026-06-10",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23214.94921875,
+      "timestamp": "2026-06-10T13:41:49.559438"
+    },
+    {
+      "date": "2026-06-11",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23161.599609375,
+      "timestamp": "2026-06-11T14:08:56.635019"
+    },
+    {
+      "date": "2026-06-12",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23622.900390625,
+      "timestamp": "2026-06-12T13:37:45.331036"
+    },
+    {
+      "date": "2026-06-15",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23853.900390625,
+      "timestamp": "2026-06-15T15:54:29.630642"
+    },
+    {
+      "date": "2026-06-16",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23989.150390625,
+      "timestamp": "2026-06-16T15:20:22.313947"
+    },
+    {
+      "date": "2026-06-17",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24085.69921875,
+      "timestamp": "2026-06-17T13:52:51.567830"
+    },
+    {
+      "date": "2026-06-18",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24168.0,
+      "timestamp": "2026-06-18T13:36:42.749733"
+    },
+    {
+      "date": "2026-06-19",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24013.099609375,
+      "timestamp": "2026-06-19T13:44:23.820142"
+    },
+    {
+      "date": "2026-06-22",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24102.900390625,
+      "timestamp": "2026-06-22T15:29:47.566062"
+    },
+    {
+      "date": "2026-06-23",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 23824.099609375,
+      "timestamp": "2026-06-23T12:43:36.983037"
+    },
+    {
+      "date": "2026-06-24",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24021.650390625,
+      "timestamp": "2026-06-24T12:25:47.442130"
+    },
+    {
+      "date": "2026-06-25",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24056.0,
+      "timestamp": "2026-06-25T12:30:31.026104"
+    },
+    {
+      "date": "2026-06-26",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24056.0,
+      "timestamp": "2026-06-26T12:22:25.063419"
+    },
+    {
+      "date": "2026-06-29",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 23946.25,
+      "timestamp": "2026-06-29T14:15:23.642015"
+    },
+    {
+      "date": "2026-06-30",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 23865.75,
+      "timestamp": "2026-06-30T12:20:23.433155"
+    },
+    {
+      "date": "2026-07-01",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24005.849609375,
+      "timestamp": "2026-07-01T12:42:21.766082"
+    },
+    {
+      "date": "2026-07-02",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24175.69921875,
+      "timestamp": "2026-07-02T12:18:18.328074"
+    },
+    {
+      "date": "2026-07-03",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24270.849609375,
+      "timestamp": "2026-07-03T12:17:55.615208"
+    },
+    {
+      "date": "2026-07-06",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24430.349609375,
+      "timestamp": "2026-07-06T13:57:25.907885"
+    },
+    {
+      "date": "2026-07-07",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24398.69921875,
+      "timestamp": "2026-07-07T12:34:14.640886"
+    },
+    {
+      "date": "2026-07-08",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 23882.05078125,
+      "timestamp": "2026-07-08T11:53:32.039788"
+    },
+    {
+      "date": "2026-07-10",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24206.900390625,
+      "timestamp": "2026-07-10T12:32:29.559747"
+    },
+    {
+      "date": "2026-07-13",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 24211.0,
+      "timestamp": "2026-07-13T12:38:51.861198"
+    },
+    {
+      "date": "2026-07-14",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24052.05078125,
+      "timestamp": "2026-07-14T11:40:16.427036"
+    },
+    {
+      "date": "2026-07-15",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24078.5,
+      "timestamp": "2026-07-15T11:43:41.594668"
+    },
+    {
+      "date": "2026-07-16",
+      "action": 0,
+      "action_name": "SHORT",
+      "price": 24072.75,
+      "timestamp": "2026-07-16T11:48:50.703430"
+    },
+    {
+      "date": "2026-07-17",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24334.30078125,
+      "timestamp": "2026-07-17T11:36:30.065908"
+    },
+    {
+      "date": "2026-07-20",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24238.5,
+      "timestamp": "2026-07-20T12:23:53.197049"
+    },
+    {
+      "date": "2026-07-21",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 24187.69921875,
+      "timestamp": "2026-07-21T11:55:54.710406"
+    },
+    {
+      "date": "2026-07-22",
+      "action": 1,
+      "action_name": "NEUTRAL",
+      "price": 23996.25,
+      "timestamp": "2026-07-22T11:58:12.562578"
+    },
+    {
+      "date": "2026-07-23",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23869.599609375,
+      "timestamp": "2026-07-23T11:58:20.781966"
+    },
+    {
+      "date": "2026-07-24",
+      "action": 2,
+      "action_name": "LONG",
+      "price": 23767.44921875,
+      "timestamp": "2026-07-24T11:50:57.665634"
     }
   ],
   "equity_curve": [
@@ -513,6 +877,234 @@
       "equity": 956795.7782614143,
       "position": "NEUTRAL",
       "price": 23382.599609375
+    },
+    {
+      "date": "2026-06-02",
+      "equity": 956317.3803722836,
+      "position": "SHORT",
+      "price": 23483.55078125
+    },
+    {
+      "date": "2026-06-03",
+      "equity": 959491.7751296543,
+      "position": "SHORT",
+      "price": 23405.599609375
+    },
+    {
+      "date": "2026-06-04",
+      "equity": 959042.8415617279,
+      "position": "SHORT",
+      "price": 23416.55078125
+    },
+    {
+      "date": "2026-06-05",
+      "equity": 960605.029212574,
+      "position": "LONG",
+      "price": 23366.69921875
+    },
+    {
+      "date": "2026-06-08",
+      "equity": 950586.5540760182,
+      "position": "LONG",
+      "price": 23123.0
+    },
+    {
+      "date": "2026-06-09",
+      "equity": 955482.7391414326,
+      "position": "LONG",
+      "price": 23242.099609375
+    },
+    {
+      "date": "2026-06-10",
+      "equity": 954366.5865545694,
+      "position": "LONG",
+      "price": 23214.94921875
+    },
+    {
+      "date": "2026-06-11",
+      "equity": 952173.3840576148,
+      "position": "LONG",
+      "price": 23161.599609375
+    },
+    {
+      "date": "2026-06-12",
+      "equity": 971137.4596551157,
+      "position": "LONG",
+      "price": 23622.900390625
+    },
+    {
+      "date": "2026-06-15",
+      "equity": 980633.8698956363,
+      "position": "LONG",
+      "price": 23853.900390625
+    },
+    {
+      "date": "2026-06-16",
+      "equity": 986193.9975364608,
+      "position": "LONG",
+      "price": 23989.150390625
+    },
+    {
+      "date": "2026-06-17",
+      "equity": 990163.1199612076,
+      "position": "LONG",
+      "price": 24085.69921875
+    },
+    {
+      "date": "2026-06-18",
+      "equity": 993546.505164088,
+      "position": "LONG",
+      "price": 24168.0
+    },
+    {
+      "date": "2026-06-19",
+      "equity": 987178.5499442096,
+      "position": "LONG",
+      "price": 24013.099609375
+    },
+    {
+      "date": "2026-06-22",
+      "equity": 990376.670879927,
+      "position": "NEUTRAL",
+      "price": 24102.900390625
+    },
+    {
+      "date": "2026-06-23",
+      "equity": 990376.670879927,
+      "position": "NEUTRAL",
+      "price": 23824.099609375
+    },
+    {
+      "date": "2026-06-24",
+      "equity": 990376.670879927,
+      "position": "NEUTRAL",
+      "price": 24021.650390625
+    },
+    {
+      "date": "2026-06-25",
+      "equity": 989881.4825444871,
+      "position": "LONG",
+      "price": 24056.0
+    },
+    {
+      "date": "2026-06-26",
+      "equity": 989881.4825444871,
+      "position": "LONG",
+      "price": 24056.0
+    },
+    {
+      "date": "2026-06-29",
+      "equity": 984870.4338588659,
+      "position": "NEUTRAL",
+      "price": 23946.25
+    },
+    {
+      "date": "2026-06-30",
+      "equity": 984870.4338588659,
+      "position": "NEUTRAL",
+      "price": 23865.75
+    },
+    {
+      "date": "2026-07-01",
+      "equity": 984870.4338588659,
+      "position": "NEUTRAL",
+      "price": 24005.849609375
+    },
+    {
+      "date": "2026-07-02",
+      "equity": 984870.4338588659,
+      "position": "NEUTRAL",
+      "price": 24175.69921875
+    },
+    {
+      "date": "2026-07-03",
+      "equity": 984377.9986419365,
+      "position": "SHORT",
+      "price": 24270.849609375
+    },
+    {
+      "date": "2026-07-06",
+      "equity": 977416.8028583312,
+      "position": "LONG",
+      "price": 24430.349609375
+    },
+    {
+      "date": "2026-07-07",
+      "equity": 976150.524474741,
+      "position": "LONG",
+      "price": 24398.69921875
+    },
+    {
+      "date": "2026-07-08",
+      "equity": 954992.222545374,
+      "position": "NEUTRAL",
+      "price": 23882.05078125
+    },
+    {
+      "date": "2026-07-10",
+      "equity": 954514.7264341014,
+      "position": "LONG",
+      "price": 24206.900390625
+    },
+    {
+      "date": "2026-07-13",
+      "equity": 954199.1228744658,
+      "position": "NEUTRAL",
+      "price": 24211.0
+    },
+    {
+      "date": "2026-07-14",
+      "equity": 953722.0233130286,
+      "position": "SHORT",
+      "price": 24052.05078125
+    },
+    {
+      "date": "2026-07-15",
+      "equity": 952673.2477782222,
+      "position": "SHORT",
+      "price": 24078.5
+    },
+    {
+      "date": "2026-07-16",
+      "equity": 952900.7482942312,
+      "position": "SHORT",
+      "price": 24072.75
+    },
+    {
+      "date": "2026-07-17",
+      "equity": 942071.017336434,
+      "position": "LONG",
+      "price": 24334.30078125
+    },
+    {
+      "date": "2026-07-20",
+      "equity": 938362.2138550802,
+      "position": "LONG",
+      "price": 24238.5
+    },
+    {
+      "date": "2026-07-21",
+      "equity": 936395.5272383622,
+      "position": "LONG",
+      "price": 24187.69921875
+    },
+    {
+      "date": "2026-07-22",
+      "equity": 928515.620303504,
+      "position": "NEUTRAL",
+      "price": 23996.25
+    },
+    {
+      "date": "2026-07-23",
+      "equity": 928051.3624933524,
+      "position": "LONG",
+      "price": 23869.599609375
+    },
+    {
+      "date": "2026-07-24",
+      "equity": 924079.7496154587,
+      "position": "LONG",
+      "price": 23767.44921875
     }
   ]
 }
