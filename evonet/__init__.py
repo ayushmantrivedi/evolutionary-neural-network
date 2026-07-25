@@ -13,6 +13,22 @@ This package provides:
 __version__ = "1.0.0"
 __author__ = "Ayushman Trivedi"
 
+def set_seed(seed: int = 42) -> None:
+    """Sets global random seeds for reproducibility (NumPy, PyTorch, random)."""
+    import random
+    import numpy as np
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    try:
+        import torch
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+    except ImportError:
+        pass
+
 # Core components
 from evonet.core.neuron import EvoNeuron, OutputNeuron, RegressionOutputNeuron
 from evonet.core.network import MultiClassEvoNet, RegressionEvoNet
@@ -45,6 +61,7 @@ from evonet.training.evolutionary_search import (
 from evonet.config import EvoNetConfig
 
 __all__ = [
+    "set_seed",
     # Core
     "EvoNeuron",
     "OutputNeuron", 

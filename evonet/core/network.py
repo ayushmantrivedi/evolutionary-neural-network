@@ -19,6 +19,7 @@ KEY DESIGN: Proper Neuroevolution
 
 import numpy as np
 import logging
+import warnings
 from typing import Tuple, Optional, List, Dict, Any
 
 from evonet.config import (
@@ -76,17 +77,47 @@ class MultiClassEvoNet:
         self.confidence_head = ConfidenceHead(LEVEL2_NEURONS)
         self.V_m = SignificantMutationVector()
 
-        self.tau1 = TAU1
-        self.tau2 = TAU2
+        # Adaptive tau: scale thresholds by log(num_classes) so V_m works
+        # for high-class problems (e.g. Digits: 10 classes → tau scales up)
+        import math
+        tau_scale = math.log(num_classes + 1) / math.log(3)  # normalized to 3-class baseline
+        self.tau1 = TAU1 * tau_scale
+        self.tau2 = TAU2 * tau_scale
         self.pop_size = POP_SIZE
         self.mut_strength_base = MUT_STRENGTH_BASE
         self.global_error: float = 1.0
+        self.best_global_loss: float = float('inf')  # tracks true best-ever network loss
         self.device = get_device(use_gpu=USE_GPU)
         self.tensor_wrapper = GPUTensorWrapper(self.device)
+        
+        # Data robustness
+        self._imputer_medians: Optional[np.ndarray] = None
+        self._variance_guards: Optional[np.ndarray] = None
+
+    def _apply_data_guards(self, X: np.ndarray) -> np.ndarray:
+        """Applies imputation and variance guards to data (Test 2 & 9)."""
+        X_clean = X.copy()
+        
+        # 1. Missing Values
+        nan_mask = np.isnan(X_clean)
+        if np.any(nan_mask) and self._imputer_medians is not None:
+            # Broadcast medians to missing locations
+            for j in range(X_clean.shape[1]):
+                col_nans = nan_mask[:, j]
+                if np.any(col_nans):
+                    X_clean[col_nans, j] = self._imputer_medians[j]
+                    
+        # 2. Edge Cases (Zero Variance)
+        if self._variance_guards is not None and np.any(self._variance_guards):
+            # Add tiny noise to constant columns to prevent attention deadlocks
+            noise = np.random.normal(0, 1e-6, size=(X_clean.shape[0], np.sum(self._variance_guards)))
+            X_clean[:, self._variance_guards] += noise
+            
+        return X_clean
 
     def get_mutation_strength(self) -> float:
-        """Adaptive mutation: higher error → stronger mutations."""
-        return max(self.mut_strength_base * (self.global_error ** 2), MIN_MUT_STRENGTH)
+        """Adaptive mutation: higher error → stronger mutations, but bounded."""
+        return min(max(self.mut_strength_base * (self.global_error ** 2), MIN_MUT_STRENGTH), 1.0)
 
     # ------------------------------------------------------------------
     # Core forward pass helpers
@@ -108,18 +139,59 @@ class MultiClassEvoNet:
         P = self.pop_size
         X64 = X_att_batch.astype(np.float64)  # [B, D]
 
-        # --- Layer 1 ---
         W1 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level1], dtype=np.float64)  # [L1, P, D]
         B1 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level1], dtype=np.float64)    # [L1, P]
+        
+        W2 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level2], dtype=np.float64)  # [L2, P, L1]
+        B2 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level2], dtype=np.float64)    # [L2, P]
+        
+        W3 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level3], dtype=np.float64)  # [C, P, L3_dim]
+        B3 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level3], dtype=np.float64)    # [C, P]
+
+        if self.device != 'cpu':
+            import torch
+            X_t = self.tensor_wrapper.to_tensor(X_att_batch)
+            W1_t = self.tensor_wrapper.to_tensor(W1)
+            B1_t = self.tensor_wrapper.to_tensor(B1)
+            l1_batch_t = torch.einsum('lpd,bd->bpl', W1_t, X_t) + B1_t.T
+            l1_batch_t = torch.relu(l1_batch_t)
+            
+            W2_t = self.tensor_wrapper.to_tensor(W2)
+            B2_t = self.tensor_wrapper.to_tensor(B2)
+            l2_batch_t = torch.einsum('jpl,bpl->bpj', W2_t, l1_batch_t) + B2_t.T
+            l2_batch_t = torch.relu(l2_batch_t)
+            
+            if USE_SKIP_CONNECTIONS:
+                l3_in_t = torch.cat([l2_batch_t, l1_batch_t], dim=2)
+            else:
+                l3_in_t = l2_batch_t
+                
+            W3_t = self.tensor_wrapper.to_tensor(W3)
+            B3_t = self.tensor_wrapper.to_tensor(B3)
+            logits_t = torch.einsum('cpl,bpl->bpc', W3_t, l3_in_t) + B3_t.T
+            
+            logits_t = torch.clamp(logits_t, min=-1e4, max=1e4)
+            logits_t = logits_t - logits_t.max(dim=2, keepdim=True)[0]
+            exp_l_t = torch.exp(logits_t)
+            y_preds_t = exp_l_t / (exp_l_t.sum(dim=2, keepdim=True) + 1e-12)
+            
+            y_preds_clipped_t = torch.clamp(y_preds_t, min=1e-8, max=1-1e-8)
+            Y_true_oh_t = self.tensor_wrapper.to_tensor(Y_true_oh_batch).unsqueeze(1)
+            
+            # Focal Loss: -(1-p_t)^gamma * log(p_t)
+            p_t_torch = torch.sum(y_preds_clipped_t * Y_true_oh_t, dim=2)
+            losses_t = -torch.pow(1.0 - p_t_torch, 2.0) * torch.log(p_t_torch)
+            
+            mean_losses_t = losses_t.mean(dim=0)
+            
+            return self.tensor_wrapper.to_numpy(mean_losses_t), self.tensor_wrapper.to_numpy(l1_batch_t), self.tensor_wrapper.to_numpy(l2_batch_t)
+
+        # --- Numpy Fallback ---
         
         # [L1, P, D] @ [B, D] -> [B, P, L1]
         l1_batch = np.einsum('lpd,bd->bpl', W1, X64) + B1.T
         l1_batch = np.maximum(0.0, l1_batch)
 
-        # --- Layer 2 ---
-        W2 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level2], dtype=np.float64)  # [L2, P, L1]
-        B2 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level2], dtype=np.float64)    # [L2, P]
-        
         # [L2, P, L1] @ [B, P, L1] -> [B, P, L2]
         l2_batch = np.einsum('jpl,bpl->bpj', W2, l1_batch) + B2.T
         l2_batch = np.maximum(0.0, l2_batch)
@@ -130,9 +202,6 @@ class MultiClassEvoNet:
         else:
             l3_in = l2_batch  # [B, P, L2]
 
-        W3 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level3], dtype=np.float64)  # [C, P, L3_dim]
-        B3 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level3], dtype=np.float64)    # [C, P]
-        
         # [C, P, L] @ [B, P, L] -> [B, P, C]
         logits = np.einsum('cpl,bpl->bpc', W3, l3_in) + B3.T
 
@@ -142,10 +211,12 @@ class MultiClassEvoNet:
         exp_l = np.exp(logits)
         y_preds = exp_l / (exp_l.sum(axis=2, keepdims=True) + 1e-12)  # [B, P, C]
 
-        # CE loss per candidate, per sample
+        # Focal loss per candidate, per sample
         y_preds_clipped = np.clip(y_preds, 1e-8, 1 - 1e-8)
         Y_true_oh_exp = Y_true_oh_batch[:, np.newaxis, :]  # [B, 1, C]
-        losses = -np.sum(Y_true_oh_exp * np.log(y_preds_clipped), axis=2)  # [B, P]
+        
+        p_t = np.sum(y_preds_clipped * Y_true_oh_exp, axis=2) # [B, P]
+        losses = -(np.power(1.0 - p_t, 2.0)) * np.log(p_t)    # [B, P]
         
         mean_losses = losses.mean(axis=0) # [P]
 
@@ -176,41 +247,80 @@ class MultiClassEvoNet:
         y_pred = softmax(l3_logits)
         return y_pred, l1_out, l2_out
 
-    def _forward_elite(self, x: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    def _forward_elite(self, X_batch: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Inference-only forward pass using elite weights.
-        No label access. Returns (y_pred, l1_outputs, l2_outputs, confidence).
+        Inference-only batched forward pass using elite weights.
+        Returns (y_preds, l1_batch, l2_batch, confidences).
+        Handles both single samples (1D) and batches (2D) natively by always expanding to 2D.
         """
-        x_att = self.attention.forward(x, train=False)
+        is_single = (X_batch.ndim == 1)
+        if is_single:
+            X_batch = X_batch.reshape(1, -1)
+        
+        # Always apply data guards so NaN handling is consistent at inference time
+        if self._imputer_medians is not None:
+            X_batch = self._apply_data_guards(X_batch)
+            
+        x_att = self.attention.forward(X_batch, train=False) # [B, D]
+        
+        # Build stacked elite weights
+        W1 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level1], dtype=np.float64) # [L1, D]
+        B1 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level1], dtype=np.float64)       # [L1]
+        W2 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level2], dtype=np.float64) # [L2, L1]
+        B2 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level2], dtype=np.float64)       # [L2]
+        W3 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level3], dtype=np.float64) # [C, L]
+        B3 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level3], dtype=np.float64)       # [C]
 
-        l1_out = np.zeros(LEVEL1_NEURONS, dtype=np.float64)
-        for i, neuron in enumerate(self.level1):
-            w = neuron.elite['weights'] if neuron.elite else neuron.population[0]['weights']
-            b = neuron.elite['bias'] if neuron.elite else neuron.population[0]['bias']
-            raw = float(np.dot(w.astype(np.float64), x_att.astype(np.float64)) + float(b))
-            l1_out[i] = max(0.0, raw)
-
-        l2_out = np.zeros(LEVEL2_NEURONS, dtype=np.float64)
-        for j, neuron in enumerate(self.level2):
-            w = neuron.elite['weights'] if neuron.elite else neuron.population[0]['weights']
-            b = neuron.elite['bias'] if neuron.elite else neuron.population[0]['bias']
-            raw = float(np.dot(w.astype(np.float64), l1_out) + float(b))
-            l2_out[j] = max(0.0, raw)
-
-        if USE_SKIP_CONNECTIONS:
-            l3_in = np.concatenate([l2_out, l1_out])
+        if self.device != 'cpu':
+            import torch
+            X_t = self.tensor_wrapper.to_tensor(x_att)
+            W1_t = self.tensor_wrapper.to_tensor(W1)
+            B1_t = self.tensor_wrapper.to_tensor(B1)
+            
+            l1_batch = torch.relu(torch.matmul(X_t, W1_t.T) + B1_t)
+            
+            W2_t = self.tensor_wrapper.to_tensor(W2)
+            B2_t = self.tensor_wrapper.to_tensor(B2)
+            l2_batch = torch.relu(torch.matmul(l1_batch, W2_t.T) + B2_t)
+            
+            if USE_SKIP_CONNECTIONS:
+                l3_in = torch.cat([l2_batch, l1_batch], dim=1)
+            else:
+                l3_in = l2_batch
+                
+            W3_t = self.tensor_wrapper.to_tensor(W3)
+            B3_t = self.tensor_wrapper.to_tensor(B3)
+            logits = torch.matmul(l3_in, W3_t.T) + B3_t
+            
+            logits = torch.clamp(logits, min=-1e4, max=1e4)
+            logits = logits - logits.max(dim=1, keepdim=True)[0]
+            exp_l = torch.exp(logits)
+            y_preds = exp_l / (exp_l.sum(dim=1, keepdim=True) + 1e-12)
+            
+            y_preds = self.tensor_wrapper.to_numpy(y_preds)
+            l1_batch = self.tensor_wrapper.to_numpy(l1_batch)
+            l2_batch = self.tensor_wrapper.to_numpy(l2_batch)
         else:
-            l3_in = l2_out
+            X64 = x_att.astype(np.float64)
+            l1_batch = np.maximum(0.0, np.dot(X64, W1.T) + B1)
+            l2_batch = np.maximum(0.0, np.dot(l1_batch, W2.T) + B2)
+            
+            if USE_SKIP_CONNECTIONS:
+                l3_in = np.concatenate([l2_batch, l1_batch], axis=1)
+            else:
+                l3_in = l2_batch
+                
+            logits = np.dot(l3_in, W3.T) + B3
+            logits = np.clip(logits, -1e4, 1e4)
+            logits -= logits.max(axis=1, keepdims=True)
+            exp_l = np.exp(logits)
+            y_preds = exp_l / (exp_l.sum(axis=1, keepdims=True) + 1e-12)
 
-        l3_logits = np.zeros(self.num_classes, dtype=np.float64)
-        for k, neuron in enumerate(self.level3):
-            w = neuron.elite['weights'] if neuron.elite else neuron.population[0]['weights']
-            b = neuron.elite['bias'] if neuron.elite else neuron.population[0]['bias']
-            l3_logits[k] = float(np.dot(w.astype(np.float64), l3_in) + float(b))
-
-        y_pred = softmax(l3_logits)
-        confidence = self.confidence_head.get_confidence(l2_out)
-        return y_pred, l1_out, l2_out, confidence
+        confidences = self.confidence_head.get_confidence(l2_batch)
+        
+        if is_single:
+            return y_preds[0], l1_batch[0], l2_batch[0], confidences[0]
+        return y_preds, l1_batch, l2_batch, confidences
 
     def _train_one_batch(
         self,
@@ -241,9 +351,13 @@ class MultiClassEvoNet:
         best_loss = mean_losses[best_k]
 
         # --- Update elites: each neuron's elite = population[best_k] if it's better ---
+        # Gate: only update if this batch's best candidate is genuinely good
+        # (below global running average * 1.5 to prevent noisy late-epoch regressions)
+        elite_gate = self.global_error * 1.5 if self.global_error < float('inf') else float('inf')
+        
         for neuron in self.level1:
             err_k = mean_losses[best_k]
-            if neuron.elite is None or err_k < neuron.elite_error:
+            if neuron.elite is None or (err_k < neuron.elite_error and err_k < elite_gate):
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
@@ -254,7 +368,7 @@ class MultiClassEvoNet:
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level2:
-            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
+            if neuron.elite is None or (mean_losses[best_k] < neuron.elite_error and mean_losses[best_k] < elite_gate):
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
@@ -265,12 +379,13 @@ class MultiClassEvoNet:
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level3:
-            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
+            if neuron.elite is None or (mean_losses[best_k] < neuron.elite_error and mean_losses[best_k] < elite_gate):
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
                 }
                 neuron.elite_error = float(mean_losses[best_k])
+
 
         # --- Evolve each neuron's population using network-level fitness ---
         # Convert loss to fitness (lower loss = higher fitness)
@@ -290,18 +405,22 @@ class MultiClassEvoNet:
             neuron.evolve_rl(fitness_ranks.tolist(), mut_strength, vm_list)
 
         # --- Update V_m with best L1/L2 directions ---
+        # Use RELATIVE trigger: update V_m when batch-best is below 60% of
+        # running global_error. This works for any num_classes (no fixed tau needed).
+        relative_threshold = self.global_error * 0.6
+        
         l1_bench = self.level1[np.argmin([
             n.elite_error if n.elite_error != float('inf') else 999
             for n in self.level1
         ])]
-        if l1_bench.last_error is not None and l1_bench.last_error < self.tau1:
+        if l1_bench.last_error is not None and l1_bench.last_error < relative_threshold:
             self.V_m.add(l1_bench.last_weights, l1_bench.last_bias)
 
         l2_bench = self.level2[np.argmin([
             n.elite_error if n.elite_error != float('inf') else 999
             for n in self.level2
         ])]
-        if l2_bench.last_error is not None and l2_bench.last_error < self.tau2:
+        if l2_bench.last_error is not None and l2_bench.last_error < relative_threshold:
             self.V_m.add(l2_bench.last_weights, l2_bench.last_bias)
 
         return float(best_loss)
@@ -334,7 +453,8 @@ class MultiClassEvoNet:
 
     def predict(self, x: np.ndarray, pilot_index: int) -> Tuple[np.ndarray, float]:
         """Fast prediction for a specific population index (RL/trading use)."""
-        x_att = self.attention.forward(x, train=False)
+        x_clean = self._apply_data_guards(x.reshape(1, -1))[0] if x.ndim == 1 else self._apply_data_guards(x)
+        x_att = self.attention.forward(x_clean, train=False)
         k = pilot_index % self.pop_size
 
         l1_out = np.zeros(LEVEL1_NEURONS, dtype=np.float64)
@@ -380,9 +500,27 @@ class MultiClassEvoNet:
         """
         batch_size = 32
         
+        # Impute missing values and compute variance guards
+        if self._imputer_medians is None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                self._imputer_medians = np.nanmedian(X, axis=0)
+                # If a column is ALL NaNs, median is NaN, fallback to 0
+                self._imputer_medians = np.nan_to_num(self._imputer_medians, nan=0.0)
+                
+                stds = np.nanstd(X, axis=0)
+                self._variance_guards = (stds == 0)
+
+        # Apply imputer and guards
+        X_clean = self._apply_data_guards(X)
+        if X_val is not None:
+            X_val_clean = self._apply_data_guards(X_val)
+        else:
+            X_val_clean = None
+        
         for epoch in range(1, epochs + 1):
-            perm = np.random.permutation(X.shape[0])
-            X_shuffled = X[perm]
+            perm = np.random.permutation(X_clean.shape[0])
+            X_shuffled = X_clean[perm]
             Y_shuffled = y_oh[perm]
             
             total_loss = 0.0
@@ -401,7 +539,7 @@ class MultiClassEvoNet:
             self.global_error = avg_loss
 
             if epoch % PRINT_INTERVAL == 0:
-                train_acc, train_loss = self.evaluate(X, y, y_oh)
+                train_acc, train_loss = self.evaluate(X_clean, y, y_oh)
                 print(f"Epoch {epoch}: Train Acc: {train_acc*100:.2f}%  Elite Loss: {train_loss:.4f}")
 
             if epoch % THOUGHT_INTERVAL == 0:
@@ -409,24 +547,38 @@ class MultiClassEvoNet:
                       f"mut_strength={self.get_mutation_strength():.4f}, "
                       f"V_m entries={len(self.V_m)}")
 
-            if X_val is not None and epoch % PRINT_INTERVAL == 0:
-                val_acc, val_loss = self.evaluate(X_val, y_val, y_val_oh)
+            if X_val_clean is not None and epoch % PRINT_INTERVAL == 0:
+                val_acc, val_loss = self.evaluate(X_val_clean, y_val, y_val_oh)
                 print(f"  [Val] Acc: {val_acc*100:.2f}%  Loss: {val_loss:.4f}")
 
     def evaluate(
         self,
         X: np.ndarray,
         y: np.ndarray,
-        y_oh: np.ndarray
+        y_oh: np.ndarray,
+        batch_size: int = 512
     ) -> Tuple[float, float]:
-        """Evaluate using elite weights only. No label access."""
+        """Evaluate using elite weights in batches for massive speedup. No label access."""
+        X_clean = self._apply_data_guards(X)
         correct = 0
         total_loss = 0.0
-        for i in range(X.shape[0]):
-            y_pred, _, _, _ = self._forward_elite(X[i])
-            if np.argmax(y_pred) == y[i]:
-                correct += 1
-            total_loss += ce_loss(y_pred, y_oh[i])
+        
+        for i in range(0, X_clean.shape[0], batch_size):
+            end = min(i + batch_size, X_clean.shape[0])
+            X_batch = X_clean[i:end]
+            Y_oh_batch = y_oh[i:end]
+            Y_batch = y[i:end]
+            
+            y_preds, _, _, _ = self._forward_elite(X_batch)
+            
+            preds_idx = np.argmax(y_preds, axis=1)
+            correct += np.sum(preds_idx == Y_batch)
+            
+            # CE loss
+            y_preds_clipped = np.clip(y_preds, 1e-8, 1 - 1e-8)
+            batch_loss = -np.sum(Y_oh_batch * np.log(y_preds_clipped))
+            total_loss += batch_loss
+            
         return correct / X.shape[0], total_loss / X.shape[0]
 
 

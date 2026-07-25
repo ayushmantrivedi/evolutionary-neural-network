@@ -56,9 +56,11 @@ class EvoNetConfig:
     vm_influence_prob: float = 0.2
     vm_improvement_thresh: float = 0.15
     
-    # Error thresholds
+    # Error thresholds — adaptive: scale with log(num_classes)
+    # For 2-class: tau1≈0.15, 3-class: tau1≈0.24, 10-class: tau1≈0.80
     tau1: float = 0.15
     tau2: float = 0.10
+    tau_adaptive: bool = True  # Scale thresholds by log(num_classes)
     
     # Mutation parameters
     mut_strength_base: float = 0.1

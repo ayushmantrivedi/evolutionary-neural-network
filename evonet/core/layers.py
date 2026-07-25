@@ -1,6 +1,5 @@
-
 import numpy as np
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Union, Optional
 from evonet.core.neuron import EvoNeuron, population_forward
 from evonet.config import POP_SIZE
 
@@ -67,8 +66,20 @@ class ConfidenceHead:
     def __init__(self, input_dim: int):
         self.neuron = EvoNeuron(input_dim)
     
-    def get_confidence(self, x: np.ndarray) -> float:
+    def get_confidence(self, x: np.ndarray) -> Union[float, np.ndarray]:
         # Map raw output to 0-1 range
-        raw, _ = self.neuron.forward(x, 0, lambda a,b: 0, 0) # No evolution during inference
-        raw_clipped = np.clip(raw, -100.0, 100.0)
-        return 1.0 / (1.0 + np.exp(-raw_clipped))
+        w = self.neuron.elite['weights'] if self.neuron.elite else self.neuron.population[0]['weights']
+        b = self.neuron.elite['bias'] if self.neuron.elite else self.neuron.population[0]['bias']
+        
+        is_single = (x.ndim == 1)
+        if is_single:
+            raw = float(np.dot(w.astype(np.float32), x.astype(np.float32)) + float(b))
+            raw_clipped = np.clip(raw, -100.0, 100.0)
+            with np.errstate(over='ignore'):
+                return float(1.0 / (1.0 + np.exp(-raw_clipped)))
+        else:
+            raw = np.dot(x.astype(np.float32), w.astype(np.float32).T) + float(b)
+            raw_clipped = np.clip(raw, -100.0, 100.0)
+            with np.errstate(over='ignore'):
+                return 1.0 / (1.0 + np.exp(-raw_clipped))
+
