@@ -165,7 +165,7 @@ class UltimateTrainer:
         best_ind = self.pilot.net.level1[0].population[best_genome_idx]
         # We need to copy best weights to index 0 for ALL neurons in ALL layers
         # Helper function in MemoryEvoPilot would be better, but doing it manually here:
-        self.pilot.set_flat_weights(self.pilot.get_flat_weights(best_genome_idx), 0)
+        self.pilot.set_flat_weights(self.pilot.get_flat_weights(int(best_genome_idx)), 0)
         
         env.close()
 
@@ -213,7 +213,7 @@ class UltimateTrainer:
             if gen % 5 == 0:
                 print(f"   Gen {gen}: Fit={best_fit:.3f} | Sortino={best_sort:.2f} | MaxDD={best_mdd:.1%}")
                 
-        self.pilot.set_flat_weights(self.pilot.get_flat_weights(best_genome_idx), 0)
+        self.pilot.set_flat_weights(self.pilot.get_flat_weights(int(best_genome_idx)), 0)
         print(f"\\n[BEST] Fitness: {best_gen_fitness:.3f}")
         env.close()
         

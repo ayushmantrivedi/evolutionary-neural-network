@@ -4,19 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evonet"
-version = "1.0.0"
+version = "1.1.0"
 description = "Evolutionary Neural Network - No Backpropagation Training"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Ayushman Trivedi"}
+    {name = "Ayushman Trivedi", email = "ayushmantrivedi@example.com"}
 ]
 keywords = [
     "neural-network",
     "evolutionary-algorithms",
     "machine-learning",
     "no-backpropagation",
-    "genetic-algorithms"
+    "genetic-algorithms",
+    "neuroevolution",
+    "imbalanced-learning",
+    "small-data",
+    "fraud-detection",
+    "automl",
+    "gradient-free",
+    "population-based-training"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -70,6 +77,8 @@ evonet = "evonet.__main__:main"
 [project.urls]
 "Homepage" = "https://github.com/ayushmantrivedi/evolutionary-neural-network"
 "Bug Tracker" = "https://github.com/ayushmantrivedi/evolutionary-neural-network/issues"
+"Documentation" = "https://github.com/ayushmantrivedi/evolutionary-neural-network/blob/main/PROFESSIONAL_GUIDE.md"
+"Benchmarks" = "https://github.com/ayushmantrivedi/evolutionary-neural-network/blob/main/BENCHMARK_REPORT.md"
 
 [tool.setuptools.packages.find]
 include = ["evonet*"]

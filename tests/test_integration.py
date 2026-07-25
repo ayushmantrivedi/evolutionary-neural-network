@@ -25,7 +25,7 @@ class TestMultiClassEvoNetIntegration:
         x = np.random.randn(5)
         y_onehot = np.array([1.0, 0.0])
         
-        y_pred, l1_errs, l2_errs, l3_outs = net.forward(x, y_onehot, train=False)
+        y_pred, l1_errs, l2_errs, l3_outs, confidence = net.forward(x, y_onehot, train=False)
         
         assert y_pred.shape == (2,)
         assert np.isclose(np.sum(y_pred), 1.0)  # Valid probability distribution
@@ -38,7 +38,7 @@ class TestMultiClassEvoNetIntegration:
         x = np.random.randn(4)
         y_onehot = np.array([0.0, 1.0, 0.0])
         
-        y_pred, _, _, _ = net.forward(x, y_onehot, train=False)
+        y_pred, _, _, _, _ = net.forward(x, y_onehot, train=False)
         
         assert y_pred.shape == (3,)
         assert np.isclose(np.sum(y_pred), 1.0)

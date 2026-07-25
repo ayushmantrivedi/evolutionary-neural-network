@@ -118,7 +118,8 @@ class EvoNeuron:
         y_true: Union[np.ndarray, float],
         error_fn: ErrorFunction,
         mutation_strength: float,
-        V_m: Optional[List[Dict[str, Any]]] = None
+        V_m: Optional[List[Dict[str, Any]]] = None,
+        train: bool = True
     ) -> Tuple[float, float]:
         """
         Forward pass through the neuron population.
@@ -135,6 +136,20 @@ class EvoNeuron:
         """
         self._check_population_shapes()
         
+        if not train:
+            # INFERENCE MODE: Use elite weights, do not evaluate population against y_true
+            if self.elite is not None:
+                w = self.elite['weights']
+                b = self.elite['bias']
+            else:
+                w = self.population[0]['weights']
+                b = self.population[0]['bias']
+            
+            out = float(np.dot(w.astype(np.float32), x.astype(np.float32)) + b)
+            out = self._activate(out)
+            err = error_fn(out, y_true) if y_true is not None else 0.0
+            return out, err
+            
         # Vectorized forward pass
         weights = np.array([ind['weights'] for ind in self.population])
         biases = np.array([ind['bias'] for ind in self.population])

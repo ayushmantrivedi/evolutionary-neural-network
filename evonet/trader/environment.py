@@ -21,6 +21,10 @@ class FinancialRegimeEnv(StocksEnv):
         # Initialize parent StocksEnv
         super().__init__(df, window_size, frame_bound)
         
+        # CRITICAL FIX: Force clamp _end_tick to prevent gym_anytrading IndexError
+        if hasattr(self, 'prices'):
+            self._end_tick = min(self._end_tick, len(self.prices) - 1)
+        
         # --- REAL WORLD FRICTION ---
         self.trade_fee_bid_percent = fee  # 0.1% Default
         self.trade_fee_ask_percent = fee  # 0.1% Default
