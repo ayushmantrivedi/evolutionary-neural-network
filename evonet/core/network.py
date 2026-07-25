@@ -92,69 +92,64 @@ class MultiClassEvoNet:
     # Core forward pass helpers
     # ------------------------------------------------------------------
 
-    def _evaluate_all_candidates(
+    def _evaluate_all_candidates_batch(
         self,
-        x_att: np.ndarray,
-        y_true_oh: np.ndarray
+        X_att_batch: np.ndarray,
+        Y_true_oh_batch: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Vectorized evaluation of all POP_SIZE candidate networks in one pass.
-
-        For each layer, stack all population weight matrices into a single array
-        and use batched matrix multiplication. This is ~POP_SIZE times faster
-        than evaluating each candidate sequentially.
+        Vectorized evaluation of all POP_SIZE candidate networks across a mini-batch.
 
         Returns:
-            losses: CE loss for each of the POP_SIZE candidates (shape [POP_SIZE])
-            l1_batch: L1 outputs for all candidates (shape [POP_SIZE, LEVEL1_NEURONS])
-            l2_batch: L2 outputs for all candidates (shape [POP_SIZE, LEVEL2_NEURONS])
+            mean_losses: Mean CE loss for each of the POP_SIZE candidates (shape [POP_SIZE])
+            l1_batch: L1 outputs for all candidates (shape [B, POP_SIZE, LEVEL1_NEURONS])
+            l2_batch: L2 outputs for all candidates (shape [B, POP_SIZE, LEVEL2_NEURONS])
         """
         P = self.pop_size
-        x64 = x_att.astype(np.float64)
+        X64 = X_att_batch.astype(np.float64)  # [B, D]
 
-        # --- Layer 1: shape [P, LEVEL1_NEURONS] ---
-        # W1[i, k, :] = level1[i].population[k]['weights']  →  stack as [P, LEVEL1_NEURONS, input_dim]
-        # For each candidate k: l1[k, i] = relu(W1[i,k] @ x + b1[i,k])
-        # Batch: l1_batch[k, i] = relu(sum_j W1[i,k,j] * x[j] + b1[i,k])
-        # Equivalent: l1_batch = relu(X_expanded @ W1.T + B1)  where dims [P, input] @ [input, L1]
-        # Build W1 as [LEVEL1_NEURONS, P, input_dim] then compute [P, LEVEL1_NEURONS]
+        # --- Layer 1 ---
         W1 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level1], dtype=np.float64)  # [L1, P, D]
         B1 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level1], dtype=np.float64)    # [L1, P]
-        # l1_batch[k, i] = sum_d W1[i, k, d] * x[d] + B1[i, k]
-        # = (W1 @ x)[i, k] + B1[i, k]  → shape [L1, P] → transpose to [P, L1]
-        l1_batch = np.einsum('lpd,d->lp', W1, x64) + B1  # [L1, P]
-        l1_batch = np.maximum(0.0, l1_batch).T  # ReLU → [P, L1]
+        
+        # [L1, P, D] @ [B, D] -> [B, P, L1]
+        l1_batch = np.einsum('lpd,bd->bpl', W1, X64) + B1.T
+        l1_batch = np.maximum(0.0, l1_batch)
 
-        # --- Layer 2: shape [P, LEVEL2_NEURONS] ---
-        # W2[j, k, :] shape [L2, P, L1]
+        # --- Layer 2 ---
         W2 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level2], dtype=np.float64)  # [L2, P, L1]
         B2 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level2], dtype=np.float64)    # [L2, P]
-        # l2_batch[k, j] = sum_i W2[j, k, i] * l1_batch[k, i] + B2[j, k]
-        l2_batch = np.einsum('jpl,pl->jp', W2, l1_batch) + B2  # [L2, P] → transpose
-        l2_batch = np.maximum(0.0, l2_batch).T  # [P, L2]
+        
+        # [L2, P, L1] @ [B, P, L1] -> [B, P, L2]
+        l2_batch = np.einsum('jpl,bpl->bpj', W2, l1_batch) + B2.T
+        l2_batch = np.maximum(0.0, l2_batch)
 
-        # --- Layer 3: shape [P, num_classes] ---
+        # --- Layer 3 ---
         if USE_SKIP_CONNECTIONS:
-            l3_in = np.concatenate([l2_batch, l1_batch], axis=1)  # [P, L2+L1]
+            l3_in = np.concatenate([l2_batch, l1_batch], axis=2)  # [B, P, L2+L1]
         else:
-            l3_in = l2_batch  # [P, L2]
+            l3_in = l2_batch  # [B, P, L2]
 
         W3 = np.array([[n.population[k]['weights'] for k in range(P)] for n in self.level3], dtype=np.float64)  # [C, P, L3_dim]
         B3 = np.array([[n.population[k]['bias'] for k in range(P)] for n in self.level3], dtype=np.float64)    # [C, P]
-        # logits[k, c] = sum W3[c, k, :] * l3_in[k, :] + B3[c, k]
-        logits = np.einsum('cpl,pl->cp', W3, l3_in) + B3  # [C, P] → transpose
-        logits = logits.T  # [P, C]
+        
+        # [C, P, L] @ [B, P, L] -> [B, P, C]
+        logits = np.einsum('cpl,bpl->bpc', W3, l3_in) + B3.T
 
-        # Softmax per candidate
-        logits -= logits.max(axis=1, keepdims=True)  # numerical stability
+        # Softmax per candidate, per sample
+        logits = np.clip(logits, -1e4, 1e4)
+        logits -= logits.max(axis=2, keepdims=True)
         exp_l = np.exp(logits)
-        y_preds = exp_l / exp_l.sum(axis=1, keepdims=True)  # [P, C]
+        y_preds = exp_l / (exp_l.sum(axis=2, keepdims=True) + 1e-12)  # [B, P, C]
 
-        # CE loss per candidate
+        # CE loss per candidate, per sample
         y_preds_clipped = np.clip(y_preds, 1e-8, 1 - 1e-8)
-        losses = -np.sum(y_true_oh * np.log(y_preds_clipped), axis=1)  # [P]
+        Y_true_oh_exp = Y_true_oh_batch[:, np.newaxis, :]  # [B, 1, C]
+        losses = -np.sum(Y_true_oh_exp * np.log(y_preds_clipped), axis=2)  # [B, P]
+        
+        mean_losses = losses.mean(axis=0) # [P]
 
-        return losses, l1_batch, l2_batch
+        return mean_losses, l1_batch, l2_batch
 
     def _net_forward_with_pop_idx(
         self,
@@ -217,42 +212,37 @@ class MultiClassEvoNet:
         confidence = self.confidence_head.get_confidence(l2_out)
         return y_pred, l1_out, l2_out, confidence
 
-    def _train_one_sample(
+    def _train_one_batch(
         self,
-        x: np.ndarray,
-        y_true_oh: np.ndarray,
+        X_batch: np.ndarray,
+        Y_true_oh_batch: np.ndarray,
         mut_strength: float
     ) -> float:
         """
-        Core neuroevolution training step for one sample.
+        Core neuroevolution training step for a mini-batch of samples.
 
         Strategy:
-        1. Evaluate the network for each candidate index k (0..POP_SIZE-1)
-           by running a full forward pass with population[k] in every neuron.
-        2. Compute cross-entropy loss for each candidate.
-        3. The best candidate index k* is the one with lowest network CE loss.
-        4. Update each neuron's elite with population[k*] if it beats the neuron's
-           current elite.
+        1. Evaluate the network for each candidate index k (0..POP_SIZE-1) across the ENTIRE batch.
+        2. Compute average cross-entropy loss for each candidate across the batch.
+        3. The best candidate index k* is the one with lowest average CE loss.
+        4. Update each neuron's elite with population[k*] if it beats the neuron's current elite.
         5. Evolve each neuron's population using the fitness ranking from step 2.
 
-        This is true neuroevolution: the fitness of a weight vector is determined
-        by how well it helps the NETWORK solve the task, not by a per-neuron proxy.
-
-        Returns: CE loss of the best candidate (for global_error tracking)
+        Returns: Mean CE loss of the best candidate (for global_error tracking)
         """
-        x_att = self.attention.forward(x, train=True)
+        X_att_batch = self.attention.forward(X_batch, train=True)
         vm_list = self.V_m.get()
 
-        # --- Vectorized evaluation of all POP_SIZE candidates in one batch ---
-        losses, l1_batch, l2_batch = self._evaluate_all_candidates(x_att, y_true_oh)
+        # --- Vectorized evaluation of all POP_SIZE candidates across the batch ---
+        mean_losses, l1_batch, l2_batch = self._evaluate_all_candidates_batch(X_att_batch, Y_true_oh_batch)
 
         # Best candidate
-        best_k = int(np.argmin(losses))
-        best_loss = losses[best_k]
+        best_k = int(np.argmin(mean_losses))
+        best_loss = mean_losses[best_k]
 
         # --- Update elites: each neuron's elite = population[best_k] if it's better ---
         for neuron in self.level1:
-            err_k = losses[best_k]
+            err_k = mean_losses[best_k]
             if neuron.elite is None or err_k < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
@@ -264,38 +254,32 @@ class MultiClassEvoNet:
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level2:
-            if neuron.elite is None or losses[best_k] < neuron.elite_error:
+            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
                 }
-                neuron.elite_error = float(losses[best_k])
-            neuron.last_error = float(losses[best_k])
+                neuron.elite_error = float(mean_losses[best_k])
+            neuron.last_error = float(mean_losses[best_k])
             neuron.last_weights = neuron.population[best_k]['weights'].copy()
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level3:
-            if neuron.elite is None or losses[best_k] < neuron.elite_error:
+            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
                 }
-                neuron.elite_error = float(losses[best_k])
+                neuron.elite_error = float(mean_losses[best_k])
 
         # --- Evolve each neuron's population using network-level fitness ---
         # Convert loss to fitness (lower loss = higher fitness)
-        # Use rank-based fitness to avoid scale issues
-        sorted_idx = np.argsort(losses)  # best (lowest loss) first
+        sorted_idx = np.argsort(mean_losses)  # best (lowest loss) first
         fitness_ranks = np.zeros(self.pop_size)
         for rank, idx in enumerate(sorted_idx):
             fitness_ranks[idx] = self.pop_size - rank  # best gets highest rank
 
         # Evolve all neurons using their population indexed by the same k
-        # Each neuron's population[k] gets fitness_ranks[k]
-        l1_dummy_x = x_att
-        l2_dummy_x = np.zeros(LEVEL1_NEURONS)  # placeholder, evolve uses pop[k] × x internally
-
-        # For each neuron, we call evolve_rl which accepts external fitness scores
         for neuron in self.level1:
             neuron.evolve_rl(fitness_ranks.tolist(), mut_strength, vm_list)
 
@@ -305,8 +289,7 @@ class MultiClassEvoNet:
         for neuron in self.level3:
             neuron.evolve_rl(fitness_ranks.tolist(), mut_strength, vm_list)
 
-        # --- Update V_m with best L1 directions ---
-        best_l1_neuron = self.level1[0]  # arbitrary - all share same best_k
+        # --- Update V_m with best L1/L2 directions ---
         l1_bench = self.level1[np.argmin([
             n.elite_error if n.elite_error != float('inf') else 999
             for n in self.level1
@@ -321,7 +304,7 @@ class MultiClassEvoNet:
         if l2_bench.last_error is not None and l2_bench.last_error < self.tau2:
             self.V_m.add(l2_bench.last_weights, l2_bench.last_bias)
 
-        return best_loss
+        return float(best_loss)
 
     def forward(
         self,
@@ -389,21 +372,32 @@ class MultiClassEvoNet:
         y_val_oh: Optional[np.ndarray] = None
     ) -> None:
         """
-        Train using neuroevolution.
+        Train using neuroevolution with mini-batches.
 
-        Each epoch: shuffle data, then for each sample run _train_one_sample()
-        which evaluates all POP_SIZE candidate networks and evolves populations.
+        Each epoch: shuffle data, slice into mini-batches, then run _train_one_batch()
+        which evaluates all POP_SIZE candidates across the entire batch to find true fitness.
         Accuracy/loss reported using elite weights (honest, no label leakage).
         """
+        batch_size = 32
+        
         for epoch in range(1, epochs + 1):
             perm = np.random.permutation(X.shape[0])
+            X_shuffled = X[perm]
+            Y_shuffled = y_oh[perm]
+            
             total_loss = 0.0
+            num_batches = 0
 
-            for i in perm:
-                loss = self._train_one_sample(X[i], y_oh[i], self.get_mutation_strength())
+            for i in range(0, X.shape[0], batch_size):
+                end = min(i + batch_size, X.shape[0])
+                X_batch = X_shuffled[i:end]
+                Y_batch = Y_shuffled[i:end]
+                
+                loss = self._train_one_batch(X_batch, Y_batch, self.get_mutation_strength())
                 total_loss += loss
+                num_batches += 1
 
-            avg_loss = total_loss / X.shape[0]
+            avg_loss = total_loss / num_batches
             self.global_error = avg_loss
 
             if epoch % PRINT_INTERVAL == 0:

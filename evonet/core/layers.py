@@ -24,18 +24,19 @@ class EvoAttentionLayer:
     def forward(self, x: np.ndarray, train: bool = True) -> np.ndarray:
         """
         Applies attention masks to input X.
+        Handles both single samples (1D) and mini-batches (2D).
         Returns the weighted feature vector from the best mask.
         """
-        # In a real neuro-net, we'd evaluate all masks, but for efficiency
-        # we use the best known one during inference.
         best_mask = self.population[self.best_idx]['weights']
         
-        # Softmax-like normalization to ensure attention sums to 1 (or just bound it)
-        # We'll use a simple Sigmoid-style gating
-        attention_scores = 1.0 / (1.0 + np.exp(-best_mask))
+        # Sigmoid-style gating with clipping to prevent overflow
+        clipped_mask = np.clip(best_mask, -100.0, 100.0)
+        attention_scores = 1.0 / (1.0 + np.exp(-clipped_mask))
         self.last_scores = attention_scores
         
+        # Works for both [D] (single) and [B, D] (batch) inputs
         return x * attention_scores
+
 
     def evolve(self, fitness_scores: List[float], mutation_strength: float):
         """Standard neuroevolution logic for attention weights."""
@@ -69,4 +70,5 @@ class ConfidenceHead:
     def get_confidence(self, x: np.ndarray) -> float:
         # Map raw output to 0-1 range
         raw, _ = self.neuron.forward(x, 0, lambda a,b: 0, 0) # No evolution during inference
-        return 1.0 / (1.0 + np.exp(-raw))
+        raw_clipped = np.clip(raw, -100.0, 100.0)
+        return 1.0 / (1.0 + np.exp(-raw_clipped))

@@ -239,60 +239,92 @@ class EvoNeuron:
         
         # Create new population with SBX crossover and polynomial mutation
         new_pop = survivors.copy()
+        num_children = self.pop_size - len(survivors)
         
-        while len(new_pop) < self.pop_size:
-            # Tournament selection for parents
-            tournament = np.random.choice(len(survivors), size=min(TOURNAMENT_SIZE, len(survivors)), replace=False)
-            parent1_idx = tournament[np.argmin([errors[sorted_idx[i]] for i in tournament if i < len(sorted_idx)])] if len(tournament) > 0 else 0
+        if num_children <= 0:
+            self.population = survivors[:self.pop_size]
+            return
             
-            tournament2 = np.random.choice(len(survivors), size=min(TOURNAMENT_SIZE, len(survivors)), replace=False)
-            parent2_idx = tournament2[0] if tournament2[0] != parent1_idx else (tournament2[1] if len(tournament2) > 1 else 0)
-            
-            parent1 = survivors[min(parent1_idx, len(survivors)-1)]
-            parent2 = survivors[min(parent2_idx, len(survivors)-1)]
-            
-            # SBX Crossover
-            if random.random() < CROSSOVER_PROB:
-                # Simulated Binary Crossover
-                u = np.random.random(self.input_dim)
-                beta = np.where(
-                    u <= 0.5,
-                    (2 * u) ** (1 / (ETA_CROSSOVER + 1)),
-                    (1 / (2 * (1 - u + 1e-10))) ** (1 / (ETA_CROSSOVER + 1))
-                )
-                child_w = 0.5 * ((1 + beta) * parent1['weights'] + (1 - beta) * parent2['weights'])
-                child_b = 0.5 * (parent1['bias'] + parent2['bias'])
-            else:
-                child_w = parent1['weights'].copy()
-                child_b = parent1['bias']
-            
-            # Polynomial mutation
-            mutation_mask = np.random.random(self.input_dim) < mutation_strength
-            u = np.random.random(self.input_dim)
-            delta = np.where(
-                u < 0.5,
-                (2 * u) ** (1 / (ETA_MUTATION + 1)) - 1,
-                1 - (2 * (1 - u)) ** (1 / (ETA_MUTATION + 1))
-            )
-            child_w[mutation_mask] += delta[mutation_mask] * mutation_strength
-            
-            if random.random() < mutation_strength:
-                u_b = random.random()
-                delta_b = ((2 * u_b) ** (1 / (ETA_MUTATION + 1)) - 1) if u_b < 0.5 else (1 - (2 * (1 - u_b)) ** (1 / (ETA_MUTATION + 1)))
-                child_b += delta_b * mutation_strength
-            
-            # V_m influence (memory-guided evolution)
-            if V_m and len(V_m) > 0 and random.random() < VM_INFLUENCE_PROB:
-                v = random.choice(V_m)
-                if v['weights'].shape == (self.input_dim,):
-                    child_w += v['weights'] * 0.3
-                child_b += v['bias'] * 0.3
-            
+        # Vectorized tournament selection
+        t_size = min(TOURNAMENT_SIZE, len(survivors))
+        
+        # Parent 1 selection
+        t1 = np.random.randint(0, len(survivors), size=(num_children, t_size))
+        # Find survivor index with lowest error in tournament
+        # survivors are sorted, but we can't just use their indices directly for fitness.
+        # errors[sorted_idx[i]] gives the error for the i-th survivor
+        survivor_errors = np.array([errors[sorted_idx[i]] for i in range(len(survivors))])
+        w1_idx = t1[np.arange(num_children), np.argmin(survivor_errors[t1], axis=1)]
+        
+        # Parent 2 selection
+        t2 = np.random.randint(0, len(survivors), size=(num_children, t_size))
+        w2_idx = t2[np.arange(num_children), np.argmin(survivor_errors[t2], axis=1)]
+        
+        # Extract parent arrays
+        pop_w = np.array([s['weights'] for s in survivors], dtype=np.float32)
+        pop_b = np.array([s['bias'] for s in survivors], dtype=np.float32)
+        
+        p1_w = pop_w[w1_idx]
+        p1_b = pop_b[w1_idx]
+        
+        p2_w = pop_w[w2_idx]
+        p2_b = pop_b[w2_idx]
+        
+        # SBX Crossover
+        do_crossover = np.random.random(num_children) < CROSSOVER_PROB
+        u = np.random.random((num_children, self.input_dim))
+        beta = np.where(
+            u <= 0.5,
+            (2 * u) ** (1 / (ETA_CROSSOVER + 1)),
+            (1 / (2 * (1 - u + 1e-10))) ** (1 / (ETA_CROSSOVER + 1))
+        )
+        
+        child_w = np.where(do_crossover[:, None], 0.5 * ((1 + beta) * p1_w + (1 - beta) * p2_w), p1_w)
+        child_b = np.where(do_crossover, 0.5 * (p1_b + p2_b), p1_b)
+        
+        # Polynomial mutation
+        mut_mask = np.random.random((num_children, self.input_dim)) < mutation_strength
+        u_mut = np.random.random((num_children, self.input_dim))
+        delta = np.where(
+            u_mut < 0.5,
+            (2 * u_mut) ** (1 / (ETA_MUTATION + 1)) - 1,
+            1 - (2 * (1 - u_mut)) ** (1 / (ETA_MUTATION + 1))
+        )
+        child_w += np.where(mut_mask, delta * mutation_strength, 0)
+        
+        mut_mask_b = np.random.random(num_children) < mutation_strength
+        u_mut_b = np.random.random(num_children)
+        delta_b = np.where(
+            u_mut_b < 0.5,
+            (2 * u_mut_b) ** (1 / (ETA_MUTATION + 1)) - 1,
+            1 - (2 * (1 - u_mut_b)) ** (1 / (ETA_MUTATION + 1))
+        )
+        child_b += np.where(mut_mask_b, delta_b * mutation_strength, 0)
+        
+        # V_m influence (memory-guided evolution)
+        if V_m and len(V_m) > 0:
+            valid_vm = [v for v in V_m if v['weights'].shape == (self.input_dim,)]
+            if len(valid_vm) > 0:
+                do_vm = np.random.random(num_children) < VM_INFLUENCE_PROB
+                if np.any(do_vm):
+                    vm_indices = np.random.randint(0, len(valid_vm), size=np.sum(do_vm))
+                    vm_w = np.array([valid_vm[i]['weights'] for i in vm_indices], dtype=np.float32)
+                    vm_b = np.array([valid_vm[i]['bias'] for i in vm_indices], dtype=np.float32)
+                    
+                    child_w[do_vm] += vm_w * 0.3
+                    child_b[do_vm] += vm_b * 0.3
+                    
+        # Add bounds to prevent RuntimeWarning overflows (NaNs and infs)
+        child_w = np.clip(child_w, -100.0, 100.0)
+        child_b = np.clip(child_b, -100.0, 100.0)
+
+        # Rebuild population list
+        for i in range(num_children):
             new_pop.append({
-                'weights': child_w.astype(np.float32),
-                'bias': np.float32(child_b)
+                'weights': child_w[i].astype(np.float32),
+                'bias': np.float32(child_b[i])
             })
-        
+            
         self.population = new_pop[:self.pop_size]
     
     def _local_refinement(
@@ -438,58 +470,86 @@ class EvoNeuron:
         ]
         
         # Create new population
-        new_pop = survivors.copy()
+        num_children = self.pop_size - len(survivors)
+        if num_children <= 0:
+            self.population = survivors[:self.pop_size]
+            return
+            
+        # Vectorized tournament selection
+        t_size = min(TOURNAMENT_SIZE, len(self.population))
         
-        while len(new_pop) < self.pop_size:
-            # Tournament
-            tournament = np.random.choice(len(self.population), size=min(TOURNAMENT_SIZE, len(self.population)), replace=False)
-            # Find winner (max fitness)
-            winner_idx = tournament[np.argmax(fitness[tournament])]
-            parent1 = self.population[winner_idx]
-            
-            tournament2 = np.random.choice(len(self.population), size=min(TOURNAMENT_SIZE, len(self.population)), replace=False)
-            winner_idx2 = tournament2[np.argmax(fitness[tournament2])]
-            parent2 = self.population[winner_idx2]
-            
-            # Crossover (SBX)
-            if random.random() < CROSSOVER_PROB:
-                 u = np.random.random(self.input_dim)
-                 beta = np.where(
-                    u <= 0.5,
-                    (2 * u) ** (1 / (ETA_CROSSOVER + 1)),
-                    (1 / (2 * (1 - u + 1e-10))) ** (1 / (ETA_CROSSOVER + 1))
-                 )
-                 child_w = 0.5 * ((1 + beta) * parent1['weights'] + (1 - beta) * parent2['weights'])
-                 child_b = 0.5 * (parent1['bias'] + parent2['bias'])
-            else:
-                child_w = parent1['weights'].copy()
-                child_b = parent1['bias']
-            
-            # Mutation
-            mutation_mask = np.random.random(self.input_dim) < mutation_strength
-            u = np.random.random(self.input_dim)
-            delta = np.where(
-                u < 0.5,
-                (2 * u) ** (1 / (ETA_MUTATION + 1)) - 1,
-                1 - (2 * (1 - u)) ** (1 / (ETA_MUTATION + 1))
-            )
-            child_w[mutation_mask] += delta[mutation_mask] * mutation_strength
-            
-            if random.random() < mutation_strength:
-                u_b = random.random()
-                delta_b = ((2 * u_b) ** (1 / (ETA_MUTATION + 1)) - 1) if u_b < 0.5 else (1 - (2 * (1 - u_b)) ** (1 / (ETA_MUTATION + 1)))
-                child_b += delta_b * mutation_strength
-            
-            # V_m influence (memory-guided evolution) - ADDED FOR CINEMATIC FINE-TUNING
-            if V_m and len(V_m) > 0 and random.random() < VM_INFLUENCE_PROB:
-                v = random.choice(V_m)
-                if v['weights'].shape == (self.input_dim,):
-                    child_w += v['weights'] * 0.3
-                child_b += v['bias'] * 0.3
+        # Parent 1 selection
+        t1 = np.random.randint(0, len(self.population), size=(num_children, t_size))
+        w1_idx = t1[np.arange(num_children), np.argmax(fitness[t1], axis=1)]
+        
+        # Parent 2 selection
+        t2 = np.random.randint(0, len(self.population), size=(num_children, t_size))
+        w2_idx = t2[np.arange(num_children), np.argmax(fitness[t2], axis=1)]
+        
+        # Extract parent arrays
+        pop_w = np.array([p['weights'] for p in self.population], dtype=np.float32)
+        pop_b = np.array([p['bias'] for p in self.population], dtype=np.float32)
+        
+        p1_w = pop_w[w1_idx]
+        p1_b = pop_b[w1_idx]
+        
+        p2_w = pop_w[w2_idx]
+        p2_b = pop_b[w2_idx]
+        
+        # SBX Crossover
+        do_crossover = np.random.random(num_children) < CROSSOVER_PROB
+        u = np.random.random((num_children, self.input_dim))
+        beta = np.where(
+            u <= 0.5,
+            (2 * u) ** (1 / (ETA_CROSSOVER + 1)),
+            (1 / (2 * (1 - u + 1e-10))) ** (1 / (ETA_CROSSOVER + 1))
+        )
+        
+        child_w = np.where(do_crossover[:, None], 0.5 * ((1 + beta) * p1_w + (1 - beta) * p2_w), p1_w)
+        child_b = np.where(do_crossover, 0.5 * (p1_b + p2_b), p1_b)
+        
+        # Polynomial mutation
+        mut_mask = np.random.random((num_children, self.input_dim)) < mutation_strength
+        u_mut = np.random.random((num_children, self.input_dim))
+        delta = np.where(
+            u_mut < 0.5,
+            (2 * u_mut) ** (1 / (ETA_MUTATION + 1)) - 1,
+            1 - (2 * (1 - u_mut)) ** (1 / (ETA_MUTATION + 1))
+        )
+        child_w += np.where(mut_mask, delta * mutation_strength, 0)
+        
+        mut_mask_b = np.random.random(num_children) < mutation_strength
+        u_mut_b = np.random.random(num_children)
+        delta_b = np.where(
+            u_mut_b < 0.5,
+            (2 * u_mut_b) ** (1 / (ETA_MUTATION + 1)) - 1,
+            1 - (2 * (1 - u_mut_b)) ** (1 / (ETA_MUTATION + 1))
+        )
+        child_b += np.where(mut_mask_b, delta_b * mutation_strength, 0)
+        
+        # V_m influence (memory-guided evolution)
+        if V_m and len(V_m) > 0:
+            valid_vm = [v for v in V_m if v['weights'].shape == (self.input_dim,)]
+            if len(valid_vm) > 0:
+                do_vm = np.random.random(num_children) < VM_INFLUENCE_PROB
+                if np.any(do_vm):
+                    vm_indices = np.random.randint(0, len(valid_vm), size=np.sum(do_vm))
+                    vm_w = np.array([valid_vm[i]['weights'] for i in vm_indices], dtype=np.float32)
+                    vm_b = np.array([valid_vm[i]['bias'] for i in vm_indices], dtype=np.float32)
+                    
+                    child_w[do_vm] += vm_w * 0.3
+                    child_b[do_vm] += vm_b * 0.3
+                    
+        # Add bounds to prevent RuntimeWarning overflows (NaNs and infs)
+        child_w = np.clip(child_w, -100.0, 100.0)
+        child_b = np.clip(child_b, -100.0, 100.0)
 
+        # Rebuild population list
+        new_pop = survivors.copy()
+        for i in range(num_children):
             new_pop.append({
-                'weights': child_w.astype(np.float32),
-                'bias': np.float32(child_b)
+                'weights': child_w[i].astype(np.float32),
+                'bias': np.float32(child_b[i])
             })
             
         self.population = new_pop[:self.pop_size]
