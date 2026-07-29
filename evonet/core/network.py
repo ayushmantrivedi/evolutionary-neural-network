@@ -87,8 +87,21 @@ class MultiClassEvoNet:
         self.mut_strength_base = MUT_STRENGTH_BASE
         self.global_error: float = 1.0
         self.best_global_loss: float = float('inf')  # tracks true best-ever network loss
+        self._best_state: Optional[Dict[str, Any]] = None
         self.device = get_device(use_gpu=USE_GPU)
         self.tensor_wrapper = GPUTensorWrapper(self.device)
+
+        # Accessibility Anchor memory: stored penultimate features for prior tasks.
+        self.anchor_inputs: Optional[np.ndarray] = None
+        self.anchor_features: Optional[np.ndarray] = None
+        self.anchor_weight: float = 0.15
+        self.anchor_max_examples: int = 64
+        self.route_count: int = 3
+        self.route_best_idx: int = 0
+        self.route_strength: float = 0.04
+        self.diversity_archive: List[np.ndarray] = []
+        self.diversity_archive_size: int = 3
+        self.diversity_bonus: float = 0.02
         
         # Data robustness
         self._imputer_medians: Optional[np.ndarray] = None
@@ -97,7 +110,6 @@ class MultiClassEvoNet:
     def _apply_data_guards(self, X: np.ndarray) -> np.ndarray:
         """Applies imputation and variance guards to data (Test 2 & 9)."""
         X_clean = X.copy()
-        
         # 1. Missing Values
         nan_mask = np.isnan(X_clean)
         if np.any(nan_mask) and self._imputer_medians is not None:
@@ -114,6 +126,77 @@ class MultiClassEvoNet:
             X_clean[:, self._variance_guards] += noise
             
         return X_clean
+
+    def _route_inputs(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Apply a lightweight route adapter based on sample volatility."""
+        X_arr = np.asarray(X, dtype=np.float32)
+        is_single = (X_arr.ndim == 1)
+        if is_single:
+            X_arr = X_arr.reshape(1, -1)
+
+        volatility = np.std(X_arr, axis=1)
+        if X_arr.shape[0] > 1:
+            low, high = np.quantile(volatility, [0.33, 0.66])
+        else:
+            low = 0.5
+            high = 1.0
+
+        route_idx = np.zeros(X_arr.shape[0], dtype=int)
+        route_idx[volatility >= low] = 1
+        route_idx[volatility >= high] = 2
+
+        routed = X_arr.copy()
+        routed[route_idx == 0] = routed[route_idx == 0] * (1.0 - self.route_strength)
+        routed[route_idx == 1] = routed[route_idx == 1] * (1.0 + self.route_strength) + np.tanh(routed[route_idx == 1]) * (self.route_strength * 0.5)
+        routed[route_idx == 2] = routed[route_idx == 2] * (1.0 - (self.route_strength * 0.5)) - np.sign(routed[route_idx == 2]) * (self.route_strength * 0.25)
+
+        if is_single:
+            return routed[0], route_idx[0:1]
+        return routed, route_idx
+
+    def _flatten_candidate_state(self, k: int) -> np.ndarray:
+        """Flatten the network parameters for candidate index k."""
+        weights = []
+        for layer in (self.level1, self.level2, self.level3):
+            for neuron in layer:
+                individual = neuron.population[k]
+                weights.append(np.asarray(individual['weights'], dtype=np.float64).ravel())
+                weights.append(np.asarray([individual['bias']], dtype=np.float64))
+        return np.concatenate(weights)
+
+    def _diversity_score(self, candidate_vector: np.ndarray) -> float:
+        """Compute the minimum cosine distance from the elite archive."""
+        if not self.diversity_archive:
+            return 0.0
+
+        candidate_norm = np.linalg.norm(candidate_vector) + 1e-12
+        best_distance = 0.0
+        for archived in self.diversity_archive:
+            archived_norm = np.linalg.norm(archived) + 1e-12
+            similarity = float(np.dot(candidate_vector, archived) / (candidate_norm * archived_norm))
+            distance = 1.0 - np.clip(similarity, -1.0, 1.0)
+            best_distance = max(best_distance, distance)
+        return best_distance
+
+    def _update_diversity_archive(self, candidate_vector: np.ndarray, candidate_loss: float) -> None:
+        """Keep a small archive of distinct high-quality candidate states."""
+        if not self.diversity_archive:
+            self.diversity_archive.append(candidate_vector.copy())
+            return
+
+        candidate_norm = np.linalg.norm(candidate_vector) + 1e-12
+        distinct = True
+        for archived in self.diversity_archive:
+            archived_norm = np.linalg.norm(archived) + 1e-12
+            similarity = float(np.dot(candidate_vector, archived) / (candidate_norm * archived_norm))
+            if similarity > 0.995:
+                distinct = False
+                break
+
+        if distinct:
+            self.diversity_archive.append(candidate_vector.copy())
+            if len(self.diversity_archive) > self.diversity_archive_size:
+                self.diversity_archive.pop(0)
 
     def get_mutation_strength(self) -> float:
         """Adaptive mutation: higher error → stronger mutations, but bounded."""
@@ -181,7 +264,7 @@ class MultiClassEvoNet:
             # Focal Loss: -(1-p_t)^gamma * log(p_t)
             p_t_torch = torch.sum(y_preds_clipped_t * Y_true_oh_t, dim=2)
             losses_t = -torch.pow(1.0 - p_t_torch, 2.0) * torch.log(p_t_torch)
-            
+
             mean_losses_t = losses_t.mean(dim=0)
             
             return self.tensor_wrapper.to_numpy(mean_losses_t), self.tensor_wrapper.to_numpy(l1_batch_t), self.tensor_wrapper.to_numpy(l2_batch_t)
@@ -217,7 +300,7 @@ class MultiClassEvoNet:
         
         p_t = np.sum(y_preds_clipped * Y_true_oh_exp, axis=2) # [B, P]
         losses = -(np.power(1.0 - p_t, 2.0)) * np.log(p_t)    # [B, P]
-        
+
         mean_losses = losses.mean(axis=0) # [P]
 
         return mean_losses, l1_batch, l2_batch
@@ -260,6 +343,8 @@ class MultiClassEvoNet:
         # Always apply data guards so NaN handling is consistent at inference time
         if self._imputer_medians is not None:
             X_batch = self._apply_data_guards(X_batch)
+
+        X_batch, _ = self._route_inputs(X_batch)
             
         x_att = self.attention.forward(X_batch, train=False) # [B, D]
         
@@ -322,6 +407,118 @@ class MultiClassEvoNet:
             return y_preds[0], l1_batch[0], l2_batch[0], confidences[0]
         return y_preds, l1_batch, l2_batch, confidences
 
+    def capture_anchor_memory(self, X_anchor: np.ndarray, max_examples: Optional[int] = None) -> None:
+        """Store anchor inputs and their penultimate features for later accessibility regularization."""
+        X_anchor = np.asarray(X_anchor, dtype=np.float32)
+        if X_anchor.ndim == 1:
+            X_anchor = X_anchor.reshape(1, -1)
+
+        limit = self.anchor_max_examples if max_examples is None else int(max_examples)
+        if X_anchor.shape[0] > limit:
+            anchor_idx = np.linspace(0, X_anchor.shape[0] - 1, limit, dtype=int)
+            X_anchor = X_anchor[anchor_idx]
+
+        if self._imputer_medians is not None:
+            X_anchor = self._apply_data_guards(X_anchor)
+
+        _, _, l2_anchor, _ = self._forward_elite(X_anchor)
+        self.anchor_inputs = X_anchor.copy()
+        self.anchor_features = np.asarray(l2_anchor, dtype=np.float32).copy()
+
+    def clear_anchor_memory(self) -> None:
+        """Remove any stored accessibility anchors."""
+        self.anchor_inputs = None
+        self.anchor_features = None
+
+    def _evaluate_anchor_memory_loss(self) -> np.ndarray:
+        """Return anchor reconstruction loss for each candidate in the population."""
+        if self.anchor_inputs is None or self.anchor_features is None:
+            return np.zeros(self.pop_size, dtype=np.float64)
+
+        X_anchor = self.anchor_inputs
+        target_l2 = self.anchor_features
+        X_att = self.attention.forward(X_anchor, train=False)
+
+        losses = np.zeros(self.pop_size, dtype=np.float64)
+        for k in range(self.pop_size):
+            sample_losses = []
+            for sample_idx in range(X_att.shape[0]):
+                _, _, l2_out = self._net_forward_with_pop_idx(X_att[sample_idx], k)
+                sample_losses.append(float(np.mean((l2_out - target_l2[sample_idx]) ** 2)))
+            losses[k] = float(np.mean(sample_losses)) if sample_losses else 0.0
+
+        return losses
+
+    def _capture_best_state(self) -> Dict[str, Any]:
+        """Store the current inference state so training can restore the best network seen."""
+        return {
+            'attention_best_idx': self.attention.best_idx,
+            'attention_best_mask': self.attention.population[self.attention.best_idx]['weights'].copy(),
+            'level1_elites': [
+                None if neuron.elite is None else {
+                    'weights': neuron.elite['weights'].copy(),
+                    'bias': neuron.elite['bias'],
+                    'elite_error': neuron.elite_error,
+                }
+                for neuron in self.level1
+            ],
+            'level2_elites': [
+                None if neuron.elite is None else {
+                    'weights': neuron.elite['weights'].copy(),
+                    'bias': neuron.elite['bias'],
+                    'elite_error': neuron.elite_error,
+                }
+                for neuron in self.level2
+            ],
+            'level3_elites': [
+                None if neuron.elite is None else {
+                    'weights': neuron.elite['weights'].copy(),
+                    'bias': neuron.elite['bias'],
+                    'elite_error': neuron.elite_error,
+                }
+                for neuron in self.level3
+            ],
+        }
+
+    def _restore_best_state(self, state: Dict[str, Any]) -> None:
+        """Restore a previously captured inference state."""
+        best_idx = int(state['attention_best_idx'])
+        self.attention.best_idx = best_idx
+        self.attention.population[best_idx]['weights'] = state['attention_best_mask'].copy()
+
+        for neuron, saved in zip(self.level1, state['level1_elites']):
+            if saved is None:
+                neuron.elite = None
+                neuron.elite_error = float('inf')
+            else:
+                neuron.elite = {
+                    'weights': saved['weights'].copy(),
+                    'bias': saved['bias'],
+                }
+                neuron.elite_error = float(saved['elite_error'])
+
+        for neuron, saved in zip(self.level2, state['level2_elites']):
+            if saved is None:
+                neuron.elite = None
+                neuron.elite_error = float('inf')
+            else:
+                neuron.elite = {
+                    'weights': saved['weights'].copy(),
+                    'bias': saved['bias'],
+                }
+                neuron.elite_error = float(saved['elite_error'])
+
+        for neuron, saved in zip(self.level3, state['level3_elites']):
+            if saved is None:
+                neuron.elite = None
+                neuron.elite_error = float('inf')
+            else:
+                neuron.elite = {
+                    'weights': saved['weights'].copy(),
+                    'bias': saved['bias'],
+                }
+                neuron.elite_error = float(saved['elite_error'])
+
     def _train_one_batch(
         self,
         X_batch: np.ndarray,
@@ -340,24 +537,36 @@ class MultiClassEvoNet:
 
         Returns: Mean CE loss of the best candidate (for global_error tracking)
         """
-        X_att_batch = self.attention.forward(X_batch, train=True)
         vm_list = self.V_m.get()
+
+        X_routed_batch, route_idx = self._route_inputs(X_batch)
+        X_att_batch = self.attention.forward(X_routed_batch, train=True)
 
         # --- Vectorized evaluation of all POP_SIZE candidates across the batch ---
         mean_losses, l1_batch, l2_batch = self._evaluate_all_candidates_batch(X_att_batch, Y_true_oh_batch)
 
+        if self.anchor_inputs is not None and self.anchor_features is not None:
+            anchor_losses = self._evaluate_anchor_memory_loss()
+            mean_losses = mean_losses + (self.anchor_weight * anchor_losses)
+
+        if self.diversity_archive:
+            diversity_scores = np.array([self._diversity_score(self._flatten_candidate_state(k)) for k in range(self.pop_size)])
+            mean_losses = mean_losses - (self.diversity_bonus * diversity_scores)
+
         # Best candidate
         best_k = int(np.argmin(mean_losses))
         best_loss = mean_losses[best_k]
+        if best_loss < self.best_global_loss:
+            self.best_global_loss = float(best_loss)
+            self._best_state = self._capture_best_state()
+
+        self.route_best_idx = int(np.bincount(route_idx, minlength=self.route_count).argmax())
+        self._update_diversity_archive(self._flatten_candidate_state(best_k), float(best_loss))
 
         # --- Update elites: each neuron's elite = population[best_k] if it's better ---
-        # Gate: only update if this batch's best candidate is genuinely good
-        # (below global running average * 1.5 to prevent noisy late-epoch regressions)
-        elite_gate = self.global_error * 1.5 if self.global_error < float('inf') else float('inf')
-        
         for neuron in self.level1:
             err_k = mean_losses[best_k]
-            if neuron.elite is None or (err_k < neuron.elite_error and err_k < elite_gate):
+            if neuron.elite is None or err_k < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
@@ -368,7 +577,7 @@ class MultiClassEvoNet:
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level2:
-            if neuron.elite is None or (mean_losses[best_k] < neuron.elite_error and mean_losses[best_k] < elite_gate):
+            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
@@ -379,13 +588,12 @@ class MultiClassEvoNet:
             neuron.last_bias = float(neuron.population[best_k]['bias'])
 
         for neuron in self.level3:
-            if neuron.elite is None or (mean_losses[best_k] < neuron.elite_error and mean_losses[best_k] < elite_gate):
+            if neuron.elite is None or mean_losses[best_k] < neuron.elite_error:
                 neuron.elite = {
                     'weights': neuron.population[best_k]['weights'].copy(),
                     'bias': neuron.population[best_k]['bias']
                 }
                 neuron.elite_error = float(mean_losses[best_k])
-
 
         # --- Evolve each neuron's population using network-level fitness ---
         # Convert loss to fitness (lower loss = higher fitness)
@@ -393,6 +601,9 @@ class MultiClassEvoNet:
         fitness_ranks = np.zeros(self.pop_size)
         for rank, idx in enumerate(sorted_idx):
             fitness_ranks[idx] = self.pop_size - rank  # best gets highest rank
+
+        # Keep the attention mask adaptive instead of freezing the initial mask.
+        self.attention.evolve(fitness_ranks.tolist(), mut_strength)
 
         # Evolve all neurons using their population indexed by the same k
         for neuron in self.level1:
@@ -425,6 +636,17 @@ class MultiClassEvoNet:
 
         return float(best_loss)
 
+    def _train_one_sample(
+        self,
+        x: np.ndarray,
+        y_true_oh: np.ndarray,
+        mut_strength: float
+    ) -> float:
+        """Train the network on a single sample using the batch trainer."""
+        x_batch = x.reshape(1, -1) if x.ndim == 1 else x
+        y_batch = y_true_oh.reshape(1, -1) if y_true_oh.ndim == 1 else y_true_oh
+        return self._train_one_batch(x_batch, y_batch, mut_strength)
+
     def forward(
         self,
         x: np.ndarray,
@@ -454,6 +676,7 @@ class MultiClassEvoNet:
     def predict(self, x: np.ndarray, pilot_index: int) -> Tuple[np.ndarray, float]:
         """Fast prediction for a specific population index (RL/trading use)."""
         x_clean = self._apply_data_guards(x.reshape(1, -1))[0] if x.ndim == 1 else self._apply_data_guards(x)
+        x_clean, _ = self._route_inputs(x_clean)
         x_att = self.attention.forward(x_clean, train=False)
         k = pilot_index % self.pop_size
 
@@ -526,14 +749,15 @@ class MultiClassEvoNet:
             total_loss = 0.0
             num_batches = 0
 
-            for i in range(0, X.shape[0], batch_size):
-                end = min(i + batch_size, X.shape[0])
+            for i in range(0, X_clean.shape[0], batch_size):
+                end = min(i + batch_size, X_clean.shape[0])
                 X_batch = X_shuffled[i:end]
                 Y_batch = Y_shuffled[i:end]
                 
                 loss = self._train_one_batch(X_batch, Y_batch, self.get_mutation_strength())
                 total_loss += loss
                 num_batches += 1
+                self.global_error = total_loss / num_batches
 
             avg_loss = total_loss / num_batches
             self.global_error = avg_loss
@@ -550,6 +774,9 @@ class MultiClassEvoNet:
             if X_val_clean is not None and epoch % PRINT_INTERVAL == 0:
                 val_acc, val_loss = self.evaluate(X_val_clean, y_val, y_val_oh)
                 print(f"  [Val] Acc: {val_acc*100:.2f}%  Loss: {val_loss:.4f}")
+
+        if self._best_state is not None:
+            self._restore_best_state(self._best_state)
 
     def evaluate(
         self,
@@ -570,7 +797,6 @@ class MultiClassEvoNet:
             Y_batch = y[i:end]
             
             y_preds, _, _, _ = self._forward_elite(X_batch)
-            
             preds_idx = np.argmax(y_preds, axis=1)
             correct += np.sum(preds_idx == Y_batch)
             
