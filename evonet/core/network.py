@@ -154,6 +154,48 @@ class MultiClassEvoNet:
             return routed[0], route_idx[0:1]
         return routed, route_idx
 
+    def _apply_route_variant(self, X: np.ndarray, route_id: int) -> np.ndarray:
+        """Apply one of the fixed route variants used for inference-time ensembling."""
+        X_arr = np.asarray(X, dtype=np.float32)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(1, -1)
+
+        if route_id == 0:
+            routed = X_arr * (1.0 - self.route_strength)
+        elif route_id == 1:
+            routed = X_arr * (1.0 + self.route_strength) + np.tanh(X_arr) * (self.route_strength * 0.5)
+        else:
+            routed = X_arr * (1.0 - (self.route_strength * 0.5)) - np.sign(X_arr) * (self.route_strength * 0.25)
+
+        return routed
+
+    def _infer_with_route(self, X_batch: np.ndarray, route_id: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Run elite inference through a specific route variant."""
+        if self._imputer_medians is not None:
+            X_batch = self._apply_data_guards(X_batch)
+
+        routed = self._apply_route_variant(X_batch, route_id)
+        x_att = self.attention.forward(routed, train=False)
+
+        W1 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level1], dtype=np.float64)
+        B1 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level1], dtype=np.float64)
+        W2 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level2], dtype=np.float64)
+        B2 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level2], dtype=np.float64)
+        W3 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level3], dtype=np.float64)
+        B3 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level3], dtype=np.float64)
+
+        X64 = x_att.astype(np.float64)
+        l1_batch = np.maximum(0.0, np.dot(X64, W1.T) + B1)
+        l2_batch = np.maximum(0.0, np.dot(l1_batch, W2.T) + B2)
+        l3_in = np.concatenate([l2_batch, l1_batch], axis=1) if USE_SKIP_CONNECTIONS else l2_batch
+        logits = np.dot(l3_in, W3.T) + B3
+        logits = np.clip(logits, -1e4, 1e4)
+        logits -= logits.max(axis=1, keepdims=True)
+        exp_l = np.exp(logits)
+        y_preds = exp_l / (exp_l.sum(axis=1, keepdims=True) + 1e-12)
+        confidences = self.confidence_head.get_confidence(l2_batch)
+        return y_preds, l1_batch, l2_batch, confidences
+
     def _flatten_candidate_state(self, k: int) -> np.ndarray:
         """Flatten the network parameters for candidate index k."""
         weights = []
@@ -340,72 +382,33 @@ class MultiClassEvoNet:
         if is_single:
             X_batch = X_batch.reshape(1, -1)
         
-        # Always apply data guards so NaN handling is consistent at inference time
-        if self._imputer_medians is not None:
-            X_batch = self._apply_data_guards(X_batch)
-
-        X_batch, _ = self._route_inputs(X_batch)
-            
-        x_att = self.attention.forward(X_batch, train=False) # [B, D]
-        
-        # Build stacked elite weights
-        W1 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level1], dtype=np.float64) # [L1, D]
-        B1 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level1], dtype=np.float64)       # [L1]
-        W2 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level2], dtype=np.float64) # [L2, L1]
-        B2 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level2], dtype=np.float64)       # [L2]
-        W3 = np.array([n.elite['weights'] if n.elite else n.population[0]['weights'] for n in self.level3], dtype=np.float64) # [C, L]
-        B3 = np.array([n.elite['bias'] if n.elite else n.population[0]['bias'] for n in self.level3], dtype=np.float64)       # [C]
-
-        if self.device != 'cpu':
-            import torch
-            X_t = self.tensor_wrapper.to_tensor(x_att)
-            W1_t = self.tensor_wrapper.to_tensor(W1)
-            B1_t = self.tensor_wrapper.to_tensor(B1)
-            
-            l1_batch = torch.relu(torch.matmul(X_t, W1_t.T) + B1_t)
-            
-            W2_t = self.tensor_wrapper.to_tensor(W2)
-            B2_t = self.tensor_wrapper.to_tensor(B2)
-            l2_batch = torch.relu(torch.matmul(l1_batch, W2_t.T) + B2_t)
-            
-            if USE_SKIP_CONNECTIONS:
-                l3_in = torch.cat([l2_batch, l1_batch], dim=1)
-            else:
-                l3_in = l2_batch
-                
-            W3_t = self.tensor_wrapper.to_tensor(W3)
-            B3_t = self.tensor_wrapper.to_tensor(B3)
-            logits = torch.matmul(l3_in, W3_t.T) + B3_t
-            
-            logits = torch.clamp(logits, min=-1e4, max=1e4)
-            logits = logits - logits.max(dim=1, keepdim=True)[0]
-            exp_l = torch.exp(logits)
-            y_preds = exp_l / (exp_l.sum(dim=1, keepdim=True) + 1e-12)
-            
-            y_preds = self.tensor_wrapper.to_numpy(y_preds)
-            l1_batch = self.tensor_wrapper.to_numpy(l1_batch)
-            l2_batch = self.tensor_wrapper.to_numpy(l2_batch)
-        else:
-            X64 = x_att.astype(np.float64)
-            l1_batch = np.maximum(0.0, np.dot(X64, W1.T) + B1)
-            l2_batch = np.maximum(0.0, np.dot(l1_batch, W2.T) + B2)
-            
-            if USE_SKIP_CONNECTIONS:
-                l3_in = np.concatenate([l2_batch, l1_batch], axis=1)
-            else:
-                l3_in = l2_batch
-                
-            logits = np.dot(l3_in, W3.T) + B3
-            logits = np.clip(logits, -1e4, 1e4)
-            logits -= logits.max(axis=1, keepdims=True)
-            exp_l = np.exp(logits)
-            y_preds = exp_l / (exp_l.sum(axis=1, keepdims=True) + 1e-12)
-
-        confidences = self.confidence_head.get_confidence(l2_batch)
-        
+        route_outputs = [self._infer_with_route(X_batch, route_id) for route_id in range(self.route_count)]
         if is_single:
+            route_scores = [float(np.asarray(outputs[3]).reshape(-1)[0]) for outputs in route_outputs]
+            best_route = int(np.argmax(route_scores))
+            y_preds, l1_batch, l2_batch, confidences = route_outputs[best_route]
             return y_preds[0], l1_batch[0], l2_batch[0], confidences[0]
-        return y_preds, l1_batch, l2_batch, confidences
+
+        confidence_stack = np.stack([np.asarray(outputs[3]).reshape(-1) for outputs in route_outputs], axis=1)
+        best_routes = np.argmax(confidence_stack, axis=1)
+
+        y_pred_list = []
+        l1_list = []
+        l2_list = []
+        conf_list = []
+        for sample_idx, route_id in enumerate(best_routes):
+            y_preds, l1_batch, l2_batch, confidences = route_outputs[int(route_id)]
+            y_pred_list.append(y_preds[sample_idx])
+            l1_list.append(l1_batch[sample_idx])
+            l2_list.append(l2_batch[sample_idx])
+            conf_list.append(float(np.asarray(confidences).reshape(-1)[sample_idx]))
+
+        return (
+            np.asarray(y_pred_list),
+            np.asarray(l1_list),
+            np.asarray(l2_list),
+            np.asarray(conf_list),
+        )
 
     def capture_anchor_memory(self, X_anchor: np.ndarray, max_examples: Optional[int] = None) -> None:
         """Store anchor inputs and their penultimate features for later accessibility regularization."""
@@ -675,33 +678,7 @@ class MultiClassEvoNet:
 
     def predict(self, x: np.ndarray, pilot_index: int) -> Tuple[np.ndarray, float]:
         """Fast prediction for a specific population index (RL/trading use)."""
-        x_clean = self._apply_data_guards(x.reshape(1, -1))[0] if x.ndim == 1 else self._apply_data_guards(x)
-        x_clean, _ = self._route_inputs(x_clean)
-        x_att = self.attention.forward(x_clean, train=False)
-        k = pilot_index % self.pop_size
-
-        l1_out = np.zeros(LEVEL1_NEURONS, dtype=np.float64)
-        for i, neuron in enumerate(self.level1):
-            ind = neuron.population[k]
-            l1_out[i] = max(0.0, float(np.dot(x_att, ind['weights']) + ind['bias']))
-
-        l2_out = np.zeros(LEVEL2_NEURONS, dtype=np.float64)
-        for j, neuron in enumerate(self.level2):
-            ind = neuron.population[k]
-            l2_out[j] = max(0.0, float(np.dot(l1_out, ind['weights']) + ind['bias']))
-
-        if USE_SKIP_CONNECTIONS:
-            l3_in = np.concatenate([l2_out, l1_out])
-        else:
-            l3_in = l2_out
-
-        l3_logits = np.zeros(self.num_classes, dtype=np.float64)
-        for c, neuron in enumerate(self.level3):
-            ind = neuron.population[k]
-            l3_logits[c] = float(np.dot(l3_in, ind['weights']) + ind['bias'])
-
-        y_pred = softmax(l3_logits)
-        confidence = self.confidence_head.get_confidence(l2_out)
+        y_pred, _, _, confidence = self._forward_elite(x)
         return y_pred, confidence
 
     def train(
